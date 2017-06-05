@@ -34,8 +34,8 @@ def messages():
 	for sender, message in messaging_events(payload):
 		print('Incoming from {}: {}'.format(sender, message))
 		send_message(sender, message)
-	# return 'ok'
-	return 200, 'ok'
+	return 'ok'
+	# return 200, 'ok'
 
 def messaging_events(payload):
 	"""Generate tuples of (sender_id, message_text) from the
