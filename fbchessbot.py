@@ -50,7 +50,7 @@ def messaging_events(payload):
 			yield event["sender"]["id"], "I can't echo this"
 
 def send_message(recipient, text):
-	r = request.post('https://graph.facebook.com/v2.9/me/messages',
+	r = requests.post('https://graph.facebook.com/v2.9/me/messages',
 		params={'access_token': PAGE_ACCESS_TOKEN},
 		data=json.dumps({
 			'recipient': {'id': recipient},
