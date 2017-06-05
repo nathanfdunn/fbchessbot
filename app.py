@@ -9,6 +9,12 @@ PAGE_ACCESS_TOKEN = 'EAADbx7arRPQBANSbXpPFJStuljMm1ZCiiPmOA3UrG5FFkSDwffYiX3HgIV
 
 app = Flask(__name__)
 
+print('Ok, we made it to app instantiation')
+
+@app.route('/', methods=['GET'])
+def hello():
+	return '<h1>Hello</h1>'
+
 @app.route('/webhook', methods=['GET'])
 def verify():
 	print('Handling Verification')
