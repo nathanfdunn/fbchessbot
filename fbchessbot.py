@@ -104,7 +104,7 @@ def messages():
 			try:
 				game.board.push_san(message)
 				save_game(game)
-				send_game_rep(game)
+				send_game_rep(sender, game)
 			except Exception as e:
 				print('Exception: ', e)
 				send_message(sender, 'Something went wrong there')
