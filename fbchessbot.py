@@ -30,6 +30,10 @@ class Game:
 	def serialized(self):
 		return pickle.dumps(self.board)
 
+	def image_url(self):
+		fen = quote_plus(self.board.fen().split()[0])
+		return 'https://fbchessbot.herokuapp.com/image?fen=' + fen
+
 
 def get_cursor():
 	url = urlparse(DATABASE_URL)
@@ -161,7 +165,15 @@ def send_game_rep(recipient, game):
 		params={'access_token': PAGE_ACCESS_TOKEN},
 		data=json.dumps({
 			'recipient': {'id': recipient},
-			'message': {'text': str(game.board)}
+			# 'message': {'text': str(game.board)}
+			'message': {
+				'attachment': {
+					'type': 'image',
+					'payload': {
+						'url': game.image_url()
+					}
+				}
+			}
 		}),
 		headers={'Content-type': 'application/json'}
 	)
