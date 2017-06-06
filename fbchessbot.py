@@ -1,32 +1,48 @@
-##!/usr/bin/env python3
-
 from flask import Flask, request
 import json
 import os
+import pickle
 import psycopg2
 import requests
 from urllib.parse import urlparse
 
 VERIFY_TOKEN = 'tobeornottobeerobot'
-PAGE_ACCESS_TOKEN = 'EAADbx7arRPQBANSbXpPFJStuljMm1ZCiiPmOA3UrG5FFkSDwffYiX3HgIVw4ZCaZAsAUsudTbIUP1ZCOTmpgajNKMMNjGB4rvqFgb0e2YMabSAv1kOvrxl0arVfqiqXKv2N2h1iu35AS95wiLxIQTx4zajbkjPzPXaeizc0rxwZDZD';
-DATABASE_URL = os.environ['DATABASE_URL']
+PAGE_ACCESS_TOKEN = 'EAADbx7arRPQBANSbXpPFJStuljMm1ZCiiPmOA3UrG5FFkSDwffYiX3HgIVw4ZCaZAsAUsudTbIUP1ZCOTmpgajNKMMNjGB4rvqFgb0e2YMabSAv1kOvrxl0arVfqiqXKv2N2h1iu35AS95wiLxIQTx4zajbkjPzPXaeizc0rxwZDZD'
+# DATABASE_URL = os.environ['DATABASE_URL']
+DATABASE_URL = 'postgres://vjqgstovnxmxhf:627707772b1836a5b792c3087a1b56c401330158c24a3f3aead4ac64c0145727@ec2-184-73-236-170.compute-1.amazonaws.com:5432/ddnssqbrihnoje'
 
-url = urlparse(DATABASE_URL)
-print('Parsed url', url)
-print('Attempting to establish database connection')
+class Game:
+	def __init__(self):
+		pass
 
-conn = psycopg2.connect(
-	database=url.path[1:],
-	user=url.username,
-	password=url.password,
-	host=url.hostname,
-	port=url.port
-)
 
-print('DB connection established successfully')
-print(conn)
-print(dir(conn))
+def get_cursor():
+	url = urlparse(DATABASE_URL)
+	conn = psycopg2.connect(
+		database=url.path[1:],
+		user=url.username,
+		password=url.password,
+		host=url.hostname,
+		port=url.port
+	)
+	return conn.cursor()
 
+# I guess we'll deactivate any...
+def save_board(board):
+	with get_cursor() as cur:
+		cur.execute("INSERT INTO games (board, active)")
+
+
+def get_current_board():
+	with get_cursor() as cur:
+		cur.execute("SELECT board FROM games WHERE active = TRUE")
+		res = cur.fetchone()
+		if res is not None:
+			return pickle.loads(bytes(res[0]))
+		return None
+
+
+exit()
 app = Flask(__name__)
 
 print('Ok, we made it to app instantiation')
@@ -34,8 +50,6 @@ print('Ok, we made it to app instantiation')
 @app.route('/', methods=['GET'])
 def hello():
 	print('processing root get')
-
-
 	return '<h1>Hello</h1>'
 
 @app.route('/webhook', methods=['GET'])
@@ -51,9 +65,7 @@ def verify():
 @app.route('/webhook', methods=['POST'])
 def messages():
 	print('Handling messages')
-	payload = request.get_data()
-	print(payload)
-	for sender, message in messaging_events(payload):
+	for sender, message in messaging_events(request.get_data()):
 		print('Incoming from {}: {}'.format(sender, message))
 		send_message(sender, message)
 	return 'ok'
@@ -78,11 +90,25 @@ def send_message(recipient, text):
 			'recipient': {'id': recipient},
 			'message': {'text': text.decode('unicode_escape')}
 		}),
-		headers={'Content-type': 'application/json'})
+		headers={'Content-type': 'application/json'}
+	)
 	if r.status_code != requests.codes.ok:
 		print('Error I think:', r.text)
 
 if __name__ == '__main__':
-	# app.run(debug=True)
 	app.run(host='0.0.0.0')
 
+
+
+	# cur.execute("SELECT EXISTS(SELECT * FROM information_schema.tables WHERE table_name=%s)", ['games'])
+	# if not cur.fetchone()[0]:
+	# 	print('recreating table games')
+	# 	# TODO how to parameterize table name?
+	# 	cur.execute("""
+	# 		CREATE TABLE games (
+	# 			id SERIAL PRIMARY KEY,
+	# 			board BYTEA,
+	#			active BOOLEAN
+	# 		)
+	# 	""")
+	# cur.execute("INSERT INTO games (board) values (%s)", [psycopg2.Binary(b'Well hello thar')])
