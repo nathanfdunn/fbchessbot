@@ -63,7 +63,7 @@ def get_active_game():
 	if row is None:
 		save_game(Game())
 		return get_active_game()
-	return Game(row)
+	return Game(row[0])
 
 
 
