@@ -45,6 +45,7 @@ def get_cursor():
 # Probably shouldn't use the game object after this...
 def save_game(game):
 	with get_cursor() as cur:
+		cur.execute("UPDATE games SET active = FALSE WHERE 1=1")		# probably can ommit 1=1
 		# Assume we only ever have an id if ...
 		if game.id is None:
 			cur.execute("INSERT INTO games (board, active) values (%s, TRUE)", [game.serialized()])
@@ -99,6 +100,7 @@ def messages():
 		elif message == 'new':
 			game = Game()
 			save_game(game)
+			send_game_rep(sender, game)
 		else:
 			game = get_active_game()
 			try:
