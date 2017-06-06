@@ -85,7 +85,8 @@ def board_image():
 	print('decoded FEN', fen)
 
 	board = chess.Board(fen)
-	board_image_name = str(board.board_zobrist_hash()) + '.png'
+	board_image_name = '/tmp/' + str(board.board_zobrist_hash()) + '.png'
+	
 	# TODO test if image already exists
 	print('board is', board)
 	board_string_array = str(board).replace(' ', '').split('\n')
