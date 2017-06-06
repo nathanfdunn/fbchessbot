@@ -59,12 +59,13 @@ def save_game(game):
 # Auto intialize (bad practice)
 def get_active_game():
 	with get_cursor() as cur:
-		cur.execute("SELECT board FROM games WHERE active = TRUE")
+		cur.execute("SELECT id, board, active FROM games WHERE active = TRUE")
 		row = cur.fetchone()
 
 	if row is None:
 		save_game(Game())
 		return get_active_game()
+	print('retrived row is', row)
 	return Game(row[0])
 
 
