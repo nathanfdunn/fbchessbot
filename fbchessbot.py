@@ -12,8 +12,20 @@ PAGE_ACCESS_TOKEN = 'EAADbx7arRPQBANSbXpPFJStuljMm1ZCiiPmOA3UrG5FFkSDwffYiX3HgIV
 DATABASE_URL = 'postgres://vjqgstovnxmxhf:627707772b1836a5b792c3087a1b56c401330158c24a3f3aead4ac64c0145727@ec2-184-73-236-170.compute-1.amazonaws.com:5432/ddnssqbrihnoje'
 
 class Game:
-	def __init__(self):
-		pass
+	def __init__(self, data_row = None):
+		if data_row is None:
+			self.id = None
+			self.active = False
+			self.board = chess.Board()
+		else:
+			self.id, raw_board, self.active = data_row
+			self.board = pickle.loads(bytes(raw_board))
+
+	def display(self):
+		print(self.board)
+
+	def serialized(self):
+		return pickle.dumps(self)
 
 
 def get_cursor():
@@ -28,18 +40,30 @@ def get_cursor():
 	return conn.cursor()
 
 # I guess we'll deactivate any...
-def save_board(board):
+# Probably shouldn't use the game object after this...
+def save_game(game):
 	with get_cursor() as cur:
-		cur.execute("INSERT INTO games (board, active)")
+		if game.id is None:
+			cur.execute("INSERT INTO games (board, active)")
+			
+
+		cur.execute("SELECT EXISTS(SELECT * FROM games WHERE id = %s)", [game.id])
+		if cur.fetchone()[0]:
+			# Need to update
+			cur.execute("UPDATE games SET board = %s, active = TRUE WHERE id = %s", [game.serialized(), game.id])
+		else:
+			cur.execute("INSERT INTO games (board, active)")
 
 
-def get_current_board():
+
+def get_active_game():
 	with get_cursor() as cur:
 		cur.execute("SELECT board FROM games WHERE active = TRUE")
-		res = cur.fetchone()
-		if res is not None:
-			return pickle.loads(bytes(res[0]))
+		row = cur.fetchone()
+
+	if row is None:
 		return None
+	return Game(row)
 
 
 exit()
