@@ -66,7 +66,7 @@ def get_active_game():
 		save_game(Game())
 		return get_active_game()
 	print('retrived row is', row)
-	return Game(row[0])
+	return Game(row)
 
 
 
