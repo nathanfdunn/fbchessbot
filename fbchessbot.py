@@ -106,6 +106,7 @@ def messages():
 				save_game(game)
 				send_game_rep(game)
 			except Exception as e:
+				print('Exception: ', e)
 				send_message(sender, 'Something went wrong there')
 
 
