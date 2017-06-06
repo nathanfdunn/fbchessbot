@@ -10,9 +10,6 @@ from PIL import Image, ImageDraw
 
 # board.save('test.png')
 
-
-
-
 def create_board_image(board):
 	board_image = Image.open('board.png').copy()
 

@@ -1,11 +1,12 @@
 import chess
-from flask import Flask, request
+from flask import Flask, request, send_file
 import json
 import os
 import pickle
+from PIL import Image, ImageDraw
 import psycopg2
 import requests
-from urllib.parse import urlparse
+from urllib.parse import urlparse, quote_plus, unquote_plus
 
 VERIFY_TOKEN = 'tobeornottobeerobot'
 PAGE_ACCESS_TOKEN = 'EAADbx7arRPQBANSbXpPFJStuljMm1ZCiiPmOA3UrG5FFkSDwffYiX3HgIVw4ZCaZAsAUsudTbIUP1ZCOTmpgajNKMMNjGB4rvqFgb0e2YMabSAv1kOvrxl0arVfqiqXKv2N2h1iu35AS95wiLxIQTx4zajbkjPzPXaeizc0rxwZDZD'
@@ -73,6 +74,29 @@ def get_active_game():
 app = Flask(__name__)
 
 print('Ok, we made it to app instantiation')
+
+@app.route('/image', methods=['GET'])
+def board_image():
+	print('Received image request')
+	if 'fen' not in request.args:
+		return 'Invalid FEN'
+	fen = unquote_plus(request.args.get('fen')) + ' w - - 0 1'
+
+	print('decoded FEN', fen)
+
+	board = chess.Board(fen)
+	board_image_name = str(board.board_zobrist_hash()) + '.png'
+	# TODO test if image already exists
+	print('board is', board)
+	board_string_array = str(board).replace(' ', '').split('\n')
+	board_image = create_board_image(board_string_array)
+
+	board_image.save(board_image_name)
+	return send_file(board_image_name)
+	# print('fen', request.args.get('fen'))
+	# print('blah', request.args)
+	# print('huh', dir(request))
+	# return send_file('board.png')
 
 @app.route('/', methods=['GET'])
 def hello():
@@ -155,6 +179,33 @@ def send_message(recipient, text):
 	)
 	if r.status_code != requests.codes.ok:
 		print('Error I think:', r.text)
+
+def create_board_image(board):
+	board_image = Image.open('board.png').copy()
+
+	piece_image_map = {
+		'r': 'sprites/blackrook.png',
+		'n': 'sprites/blackknight.png',
+		'b': 'sprites/blackbishop.png',
+		'q': 'sprites/blackqueen.png',
+		'k': 'sprites/blackking.png',
+		'p': 'sprites/blackpawn.png',
+
+		'R': 'sprites/whiterook.png',
+		'N': 'sprites/whiteknight.png',
+		'B': 'sprites/whitebishop.png',
+		'Q': 'sprites/whitequeen.png',
+		'K': 'sprites/whiteking.png',
+		'P': 'sprites/whitepawn.png'
+	}
+	for i, row in enumerate(board):
+		for j, piece in enumerate(row):
+			if piece in piece_image_map:
+				piece_image = Image.open(piece_image_map[piece])
+				board_image.paste(piece_image, (64*j, 64*i), piece_image)
+
+	return board_image
+
 
 if __name__ == '__main__':
 	app.run(host='0.0.0.0')
