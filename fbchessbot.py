@@ -9,7 +9,7 @@ from urllib.parse import urlparse
 
 VERIFY_TOKEN = 'tobeornottobeerobot'
 PAGE_ACCESS_TOKEN = 'EAADbx7arRPQBANSbXpPFJStuljMm1ZCiiPmOA3UrG5FFkSDwffYiX3HgIVw4ZCaZAsAUsudTbIUP1ZCOTmpgajNKMMNjGB4rvqFgb0e2YMabSAv1kOvrxl0arVfqiqXKv2N2h1iu35AS95wiLxIQTx4zajbkjPzPXaeizc0rxwZDZD';
-DATABASE_URL = os.environ('DATABASE_URL')
+DATABASE_URL = os.environ['DATABASE_URL']
 
 url = urlparse(DATABASE_URL)
 print('Parsed url', url)
