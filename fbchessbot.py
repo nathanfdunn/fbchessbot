@@ -2,20 +2,40 @@
 
 from flask import Flask, request
 import json
+import os
+import psycopg2
 import requests
+from urllib.parse import urlparse
 
 VERIFY_TOKEN = 'tobeornottobeerobot'
 PAGE_ACCESS_TOKEN = 'EAADbx7arRPQBANSbXpPFJStuljMm1ZCiiPmOA3UrG5FFkSDwffYiX3HgIVw4ZCaZAsAUsudTbIUP1ZCOTmpgajNKMMNjGB4rvqFgb0e2YMabSAv1kOvrxl0arVfqiqXKv2N2h1iu35AS95wiLxIQTx4zajbkjPzPXaeizc0rxwZDZD';
+DATABASE_URL = os.environ('DATABASE_URL')
+
+url = urlparse(DATABASE_URL)
+print('Parsed url', url)
+print('Attempting to establish database connection')
+
+conn = psycopg2.connect(
+	database=url.path[1:],
+	user=url.username,
+	password=url.password,
+	host=url.hostname,
+	port=url.port
+)
+
+print('DB connection established successfully')
+print(conn)
+print(dir(conn))
 
 app = Flask(__name__)
 
 print('Ok, we made it to app instantiation')
-import os
-print(os.environ)
 
 @app.route('/', methods=['GET'])
 def hello():
 	print('processing root get')
+
+
 	return '<h1>Hello</h1>'
 
 @app.route('/webhook', methods=['GET'])
