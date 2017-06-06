@@ -24,8 +24,9 @@ class Game:
 	def display(self):
 		print(self.board)
 
+		# Technically it's just the board that's serialized
 	def serialized(self):
-		return pickle.dumps(self)
+		return pickle.dumps(self.board)
 
 
 def get_cursor():
@@ -43,30 +44,29 @@ def get_cursor():
 # Probably shouldn't use the game object after this...
 def save_game(game):
 	with get_cursor() as cur:
+		# Assume we only ever have an id if ...
 		if game.id is None:
-			cur.execute("INSERT INTO games (board, active)")
-			
-
-		cur.execute("SELECT EXISTS(SELECT * FROM games WHERE id = %s)", [game.id])
-		if cur.fetchone()[0]:
+			cur.execute("INSERT INTO games (board, active) values (%s, TRUE)", [game.serialized()])
+		else:
+			# cur.execute("SELECT EXISTS(SELECT * FROM games WHERE id = %s)", [game.id])
+			# if cur.fetchone()[0]:
 			# Need to update
 			cur.execute("UPDATE games SET board = %s, active = TRUE WHERE id = %s", [game.serialized(), game.id])
-		else:
-			cur.execute("INSERT INTO games (board, active)")
+		cur.connection.commit()
 
-
-
+# Auto intialize (bad practice)
 def get_active_game():
 	with get_cursor() as cur:
 		cur.execute("SELECT board FROM games WHERE active = TRUE")
 		row = cur.fetchone()
 
 	if row is None:
-		return None
+		save_game(Game())
+		return get_active_game()
 	return Game(row)
 
 
-exit()
+
 app = Flask(__name__)
 
 print('Ok, we made it to app instantiation')
@@ -91,7 +91,26 @@ def messages():
 	print('Handling messages')
 	for sender, message in messaging_events(request.get_data()):
 		print('Incoming from {}: {}'.format(sender, message))
-		send_message(sender, message)
+		message = message.strip()
+		if message == 'show':
+			game = get_active_game()
+			send_game_rep(sender, game)
+		elif message == 'new':
+			game = Game()
+			save_game(game)
+		else:
+			game = get_active_game()
+			try:
+				game.board.push_san(message)
+				save_game(game)
+				send_game_rep(game)
+			except Exception as e:
+				send_message(sender, 'Something went wrong there')
+
+
+			# send_game_rep()
+
+		# send_message(sender, message)
 	return 'ok'
 	# return 200, 'ok'
 
@@ -103,16 +122,29 @@ def messaging_events(payload):
 	events = data["entry"][0]["messaging"]
 	for event in events:
 		if "message" in event and "text" in event["message"]:
-			yield event["sender"]["id"], event["message"]["text"].encode('unicode_escape')
+			yield event["sender"]["id"], event["message"]["text"]#event["message"]["text"].encode('unicode_escape')
 		else:
 			yield event["sender"]["id"], "I can't echo this"
+
+def send_game_rep(recipient, game):
+	r = requests.post('https://graph.facebook.com/v2.9/me/messages',
+		params={'access_token': PAGE_ACCESS_TOKEN},
+		data=json.dumps({
+			'recipient': {'id': recipient},
+			'message': {'text': str(game.board)}
+		}),
+		headers={'Content-type': 'application/json'}
+	)
+	if r.status_code != requests.codes.ok:
+		print('Error I think:', r.text)
 
 def send_message(recipient, text):
 	r = requests.post('https://graph.facebook.com/v2.9/me/messages',
 		params={'access_token': PAGE_ACCESS_TOKEN},
 		data=json.dumps({
 			'recipient': {'id': recipient},
-			'message': {'text': text.decode('unicode_escape')}
+			# 'message': {'text': text.decode('unicode_escape')}
+			'message': {'text': text}
 		}),
 		headers={'Content-type': 'application/json'}
 	)
