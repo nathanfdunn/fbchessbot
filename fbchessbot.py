@@ -123,6 +123,7 @@ def messages():
 	print('Handling messages')
 	for sender, message in messaging_events(request.get_data()):
 		print('Incoming from {}: {}'.format(sender, message))
+		print('type is ', type(sender))
 		message = message.strip()
 		if message == 'show':
 			game = get_active_game()
@@ -222,18 +223,3 @@ def create_board_image(board):
 
 if __name__ == '__main__':
 	app.run(host='0.0.0.0')
-
-
-
-	# cur.execute("SELECT EXISTS(SELECT * FROM information_schema.tables WHERE table_name=%s)", ['games'])
-	# if not cur.fetchone()[0]:
-	# 	print('recreating table games')
-	# 	# TODO how to parameterize table name?
-	# 	cur.execute("""
-	# 		CREATE TABLE games (
-	# 			id SERIAL PRIMARY KEY,
-	# 			board BYTEA,
-	#			active BOOLEAN
-	# 		)
-	# 	""")
-	# cur.execute("INSERT INTO games (board) values (%s)", [psycopg2.Binary(b'Well hello thar')])
