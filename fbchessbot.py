@@ -5,6 +5,7 @@ import os
 import pickle
 from PIL import Image, ImageDraw
 import psycopg2
+import re
 import requests
 from urllib.parse import urlparse, quote_plus, unquote_plus
 
@@ -123,8 +124,13 @@ def messages():
 	print('Handling messages')
 	for sender, message in messaging_events(request.get_data()):
 		print('Incoming from {}: {}'.format(sender, message))
-		print('type is ', type(sender))
 		message = message.strip()
+
+		done = handle_help(sender, message) or handle_register(sender, message)
+
+		if done:
+			continue
+
 		if message == 'show':
 			game = get_active_game()
 			send_game_rep(sender, game)
@@ -142,6 +148,46 @@ def messages():
 				print('Exception: ', e)
 				send_message(sender, 'Something went wrong there')
 
+def handle_help(sender, message):
+	if re.match('^help$', message, re.IGNORECASE):
+		send_message(sender, 'Help text coming soon...')
+		return True
+	else:
+		return False
+
+def handle_register(sender, message):
+	m = re.match(r'^my\s+name\s+is\s+([a-z]+[0-9]*)')
+	if m:
+		nickname = m.groups()[0]
+		if len(nickname) > 32:
+			send_message(sender, 'That nickname is too long')
+			return True
+		register = register_user(sender, nickname)
+		if register:
+			send_message(sender, f'Nice to meet you {nickname}!')
+		else:
+			send_message(sender, f'Set your nickname to {nickname}')
+
+		return True
+	elif re.match(r'^my\s+name\s+is\s+'):
+		send_message(sender, 'Nickname must match regex [a-z]+[0-9]*')
+		return True
+	else:
+		return False
+
+# Returns True if user was already registered
+def set_nickname(sender, nickname):
+	playerid = int(sender)
+	with get_cursor() as cur:
+		cur.execute('SELECT COUNT(*) FROM player WHERE id = %s', [playerid])
+		if cur.fetchone():	# user already exists
+			cur.execute('UPDATE player SET nickname = %s WHERE id = %s', [nickname, playerid])
+			cur.connection.commit()
+			return True
+		else:				# user does not exist
+			cur.execute()
+			cur.connection.commit('INSERT INTO player (id, nickname) VALUES (%s, %s)', [nickname, playerid])
+			return False
 
 			# send_game_rep()
 
