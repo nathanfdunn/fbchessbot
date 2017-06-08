@@ -171,6 +171,11 @@ def handle_help(sender, message):
 	else:
 		return False
 
+# def user_is_registered(sender):
+# 	with get_cursor() as cur:
+
+
+
 def handle_register(sender, message):
 	m = re.match(r'^my\s+name\s+is\s+([a-z]+[0-9]*)', message)
 	if m:
@@ -178,7 +183,7 @@ def handle_register(sender, message):
 		if len(nickname) > 32:
 			send_message(sender, 'That nickname is too long')
 			return True
-		register = register_user(sender, nickname)
+		register = set_nickname(sender, nickname)
 		if register:
 			send_message(sender, f'Nice to meet you {nickname}!')
 		else:
