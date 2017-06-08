@@ -206,6 +206,7 @@ def messages():
 		if message == 'show':
 			game = get_active_game(sender)
 			send_game_rep(sender, game, game.white == sender)
+			continue
 
 		done = (handle_help(sender, message) 
 			or handle_register(sender, message)
