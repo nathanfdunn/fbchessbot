@@ -303,5 +303,5 @@ def create_board_image(board):
 
 
 if __name__ == '__main__':
-	# app.run(host='0.0.0.0')
-	pass
+	app.run(host='0.0.0.0')
+	# pass
