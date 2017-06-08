@@ -174,7 +174,7 @@ def handle_help(sender, message):
 def user_is_registered(sender):
 	with get_cursor() as cur:
 		cur.execute('SELECT COUNT(*) FROM player WHERE id = %s', [int(sender)])
-		return bool(cur.fetchone())
+		return bool(cur.fetchone()[0])
 
 
 def handle_register(sender, message):

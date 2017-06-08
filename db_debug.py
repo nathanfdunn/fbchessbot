@@ -54,6 +54,9 @@ def migration2():
 
 		cur.connection.commit()
 
+def rlbk():
+	cur.connection.rollback()
+
 # migration2()
 # with get_cursor() as cur:
 # 	cur.execute("""
