@@ -141,9 +141,9 @@ def messages():
 		message = message.strip()
 
 		done = handle_help(sender, message) or handle_register(sender, message)
-
 		if done:
 			continue
+		if user_is_registered(sender)
 
 		if message == 'show':
 			game = get_active_game()
@@ -165,7 +165,7 @@ def messages():
 	return 'ok'
 
 def handle_help(sender, message):
-	if re.match('^help$', message, re.IGNORECASE):
+	if re.match(r'^\s*help\s$', message, re.IGNORECASE):
 		send_message(sender, 'Help text coming soon...')
 		return True
 	else:
@@ -178,44 +178,57 @@ def user_is_registered(sender):
 
 
 def handle_register(sender, message):
-	m = re.match(r'^my\s+name\s+is\s+([a-z]+[0-9]*)', message)
+	# send_message = lambda sender, message: print(f'Send message: {sender} - {message}')
+	m = re.match(r'^my\s+name\s+is\s+([a-z]+[0-9]*)\s*$', message, re.IGNORECASE)
 	if m:
 		nickname = m.groups()[0]
 		if len(nickname) > 32:
-			send_message(sender, 'That nickname is too long')
+			send_message(sender, 'That nickname is too long (Try 32 or less characters)')
 			return True
-		register = set_nickname(sender, nickname)
-		if register:
+		user_is_new = set_nickname(sender, nickname)
+		if user_is_new:
 			send_message(sender, f'Nice to meet you {nickname}!')
 		else:
-			send_message(sender, f'Set your nickname to {nickname}')
+			send_message(sender, f'I set your nickname to {nickname}')
 
 		return True
-	elif re.match(r'^my\s+name\s+is\s+', message):
+	elif re.match(r'^my\s+name\s+is\s+', message, re.IGNORECASE):
 		send_message(sender, 'Nickname must match regex [a-z]+[0-9]*')
 		return True
 	else:
 		return False
 
-# Returns True if user was already registered
+
+# Returns True if user is new
 def set_nickname(sender, nickname):
 	playerid = int(sender)
 	with get_cursor() as cur:
-		cur.execute('SELECT COUNT(*) FROM player WHERE id = %s', [playerid])
-		if cur.fetchone():	# user already exists
+		# cur.execute('SELECT COUNT(*) FROM player WHERE id = %s', [playerid])
+		# user_exists = cur.fetchone()[0]
+		user_exists = user_is_registered(sender)
+		# if cur.fetchone():	# user already exists
+		print('user_exists', user_exists)
+		if user_exists:
+			print('user existed')
 			cur.execute('UPDATE player SET nickname = %s WHERE id = %s', [nickname, playerid])
 			cur.connection.commit()
-			return True
-		else:				# user does not exist
-			cur.execute('INSERT INTO player (id, nickname) VALUES (%s, %s)', [nickname, playerid])
-			cur.connection.commit()
 			return False
+		else:				# user does not exist
+			print('user does not exist')
+			cur.execute('INSERT INTO player (id, nickname) VALUES (%s, %s)', [playerid, nickname])
+			cur.connection.commit()
+			return True
 
 			# send_game_rep()
 
 		# send_message(sender, message)
 	return 'ok'
 	# return 200, 'ok'
+# print('register', handle_register('83832204', 'mY naMe is JejaiSS'))
+# exit()
+
+
+# print(set_nickname('8323', 'nate'))
 
 def messaging_events(payload):
 	"""Generate tuples of (sender_id, message_text) from the
@@ -290,4 +303,5 @@ def create_board_image(board):
 
 
 if __name__ == '__main__':
-	app.run(host='0.0.0.0')
+	# app.run(host='0.0.0.0')
+	pass
