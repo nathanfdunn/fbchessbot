@@ -148,6 +148,8 @@ def messages():
 				print('Exception: ', e)
 				send_message(sender, 'Something went wrong there')
 
+	return 'ok'
+
 def handle_help(sender, message):
 	if re.match('^help$', message, re.IGNORECASE):
 		send_message(sender, 'Help text coming soon...')
