@@ -203,6 +203,10 @@ def messages():
 		print('Incoming from {}: {}'.format(sender, message))
 		message = message.strip()
 
+		if message == 'show':
+			game = get_active_game(sender)
+			send_game_rep(sender, game, game.white == sender)
+
 		done = (handle_help(sender, message) 
 			or handle_register(sender, message)
 			or handle_play(sender, message)
@@ -213,9 +217,7 @@ def messages():
 		if done:
 			continue
 
-		if message == 'show':
-			game = get_active_game(sender)
-			send_game_rep(sender, game, game.white == sender)
+
 		# elif message == 'new':
 		# 	game = Game()
 		# 	save_game(game)
@@ -393,7 +395,9 @@ def handle_new(sender, message):
 			whiteplayer, blackplayer = sender, opponentid
 		else:
 			whiteplayer, blackplayer = opponentid, sender
+		nickname = nickname_from_id(sender)
 		create_new_game(whiteplayer, blackplayer)
+		send_message(opponentid, f'{nickname} started a new game')
 		g = get_active_game(sender)
 		show_game_to_both(g)
 		return True
