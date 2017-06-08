@@ -128,7 +128,7 @@ def dontcrash(func):
 		try:
 			return func(*args, **kwargs)
 		except Exception as e:
-			print(e)
+			print(repr(e))
 			return 'ok'
 	return wrapper
 
@@ -140,10 +140,10 @@ def messages():
 		print('Incoming from {}: {}'.format(sender, message))
 		message = message.strip()
 
-		# done = handle_help(sender, message) or handle_register(sender, message)
+		done = handle_help(sender, message) or handle_register(sender, message)
 
-		# if done:
-		# 	continue
+		if done:
+			continue
 
 		if message == 'show':
 			game = get_active_game()
