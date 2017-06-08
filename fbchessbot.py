@@ -212,12 +212,10 @@ def messages():
 
 		if done:
 			continue
-		# if user_is_registered(sender)
 
-
-		# if message == 'show':
-		# 	game = get_active_game()
-		# 	send_game_rep(sender, game)
+		if message == 'show':
+			game = get_active_game(sender)
+			send_game_rep(sender, game, game.white == sender)
 		# elif message == 'new':
 		# 	game = Game()
 		# 	save_game(game)
@@ -396,6 +394,8 @@ def handle_new(sender, message):
 		else:
 			whiteplayer, blackplayer = opponentid, sender
 		create_new_game(whiteplayer, blackplayer)
+		g = get_active_game(sender)
+		show_game_to_both(g)
 		return True
 	return False
 
@@ -432,6 +432,11 @@ def send_game_rep(recipient, game, perspective=True):
 	)
 	if r.status_code != requests.codes.ok:
 		print('Error I think:', r.text)
+
+def show_game_to_both(game):
+	send_game_rep(game.white, game)
+	send_game_rep(game.black, game, False)
+
 
 def send_message(recipient, text):
 	r = requests.post('https://graph.facebook.com/v2.9/me/messages',
