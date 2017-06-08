@@ -54,8 +54,33 @@ def migration2():
 
 		cur.connection.commit()
 
+cur = None
+def op():
+	global cur
+	cur = get_cursor()
+
 def rlbk():
+	global cur
 	cur.connection.rollback()
+
+def close():
+	global cur
+	cur.connection.close()
+	cur.close()
+	cur = None
+
+def exe(cmd):
+	global cur
+	if not cur:
+		cur = get_cursor()
+	cur.execute(cmd)
+	return list(cur)
+
+def select(cmd):
+	return exe('select ' + cmd)
+	# cur = get_cursor()
+	# cur.execute(cmd)
+	# return cur
 
 # migration2()
 # with get_cursor() as cur:

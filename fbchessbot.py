@@ -21,8 +21,11 @@ class Game:
 			self.id = None
 			self.active = False
 			self.board = chess.Board()
+			self.white = None
+			self.black = None
 		else:
-			self.id, raw_board, self.active = data_row
+			self.id, raw_board, self.active, self.white, self.black = data_row
+			self.white, self.black = str(self.white), str(self.black)
 			self.board = pickle.loads(bytes(raw_board))
 
 	def display(self):
@@ -32,9 +35,21 @@ class Game:
 	def serialized(self):
 		return pickle.dumps(self.board)
 
-	def image_url(self):
-		fen = quote_plus(self.board.fen().split()[0])
-		return 'https://fbchessbot.herokuapp.com/image?fen=' + fen
+	def image_url(self, perspective=True):
+		BLACK = False
+		fen = self.board.fen().split()[0]
+
+		if perspective == BLACK:
+			fen = '/'.join(line[::-1] for line in reversed(fen.split('/')))
+
+		return 'https://fbchessbot.herokuapp.com/image?fen=' + quote_plus(fen)
+
+	def is_active_player(self, playerid):
+		WHITE = True
+		if self.board.turn == WHITE:		
+			return playerid == self.white
+		else:
+			return playerid == self.black
 
 
 def get_cursor():
@@ -50,32 +65,80 @@ def get_cursor():
 
 # I guess we'll deactivate any...
 # Probably shouldn't use the game object after this...
+# def save_game(game):
+# 	with get_cursor() as cur:
+# 		cur.execute("UPDATE games SET active = FALSE WHERE 1=1")		# probably can ommit 1=1
+# 		# Assume we only ever have an id if ...
+# 		if game.id is None:
+# 			cur.execute("INSERT INTO games (board, active) values (%s, TRUE)", [game.serialized()])
+# 		else:
+# 			# cur.execute("SELECT EXISTS(SELECT * FROM games WHERE id = %s)", [game.id])
+# 			# if cur.fetchone()[0]:
+# 			# Need to update
+# 			cur.execute("UPDATE games SET board = %s, active = TRUE WHERE id = %s", [game.serialized(), game.id])
+# 		cur.connection.commit()
+
+# # Auto intialize (bad practice)
+# def get_active_game():
+# 	with get_cursor() as cur:
+# 		cur.execute("SELECT id, board, active FROM games WHERE active = TRUE")
+# 		row = cur.fetchone()
+
+# 	if row is None:
+# 		save_game(Game())
+# 		return get_active_game()
+# 	print('retrived row is', row)
+# 	return Game(row)
+
+def get_active_game(sender):
+	with get_cursor() as cur:
+		cur.execute("SELECT opponent_context FROM player WHERE id = %s", [sender])
+		opponentid = cur.fetchone()
+		if opponentid:
+			opponentid = opponentid[0]
+			cur.execute("""
+				SELECT id, board, active, whiteplayer, blackplayer
+				FROM games WHERE 
+				active = TRUE AND (
+					(whiteplayer = %s AND blackplayer = %s)
+					OR
+					(blackplayer = %s AND whiteplayer = %s)
+				)
+				""", [sender, opponentid, sender, opponentid])
+			# For now we don't want to impact the game if there is something wrong
+			# assert cur.rowcount <= 1
+			result = cur.fetchone()
+			if result:
+				return Game(result)
+
+			return None
+		else:			# no active game
+			return None
+
 def save_game(game):
 	with get_cursor() as cur:
-		cur.execute("UPDATE games SET active = FALSE WHERE 1=1")		# probably can ommit 1=1
-		# Assume we only ever have an id if ...
-		if game.id is None:
-			cur.execute("INSERT INTO games (board, active) values (%s, TRUE)", [game.serialized()])
-		else:
-			# cur.execute("SELECT EXISTS(SELECT * FROM games WHERE id = %s)", [game.id])
-			# if cur.fetchone()[0]:
-			# Need to update
-			cur.execute("UPDATE games SET board = %s, active = TRUE WHERE id = %s", [game.serialized(), game.id])
+		cur.execute('''
+			UPDATE games SET board = %s WHERE id = %s
+			''', [game.serialized(), game.id])
 		cur.connection.commit()
 
-# Auto intialize (bad practice)
-def get_active_game():
+def create_new_game(whiteplayer, blackplayer):
 	with get_cursor() as cur:
-		cur.execute("SELECT id, board, active FROM games WHERE active = TRUE")
-		row = cur.fetchone()
+		new_game = Game()
+		# TODO remove probably because we won't be able to start a new game if old isn't finished
+		cur.execute("""
+			UPDATE games SET active = FALSE WHERE 
+			(whiteplayer = %s AND blackplayer = %s)
+			OR
+			(blackplayer = %s AND whiteplayer = %s)
+			""", [whiteplayer, blackplayer, whiteplayer, blackplayer])
 
-	if row is None:
-		save_game(Game())
-		return get_active_game()
-	print('retrived row is', row)
-	return Game(row)
-
-
+		cur.execute("""
+			INSERT INTO games (board, active, whiteplayer, blackplayer) VALUES (
+				%s, TRUE, %s, %s
+			)
+			""", [new_game.serialized(), whiteplayer, blackplayer])
+		cur.connection.commit()
 
 app = Flask(__name__)
 
@@ -140,29 +203,71 @@ def messages():
 		print('Incoming from {}: {}'.format(sender, message))
 		message = message.strip()
 
-		done = handle_help(sender, message) or handle_register(sender, message)
+		done = (handle_help(sender, message) 
+			or handle_register(sender, message)
+			or handle_play(sender, message)
+			or handle_new(sender, message)
+			or handle_move(sender, message)
+		)
+
 		if done:
 			continue
 		# if user_is_registered(sender)
 
-		if message == 'show':
-			game = get_active_game()
-			send_game_rep(sender, game)
-		elif message == 'new':
-			game = Game()
-			save_game(game)
-			send_game_rep(sender, game)
-		else:
-			game = get_active_game()
-			try:
-				game.board.push_san(message)
-				save_game(game)
-				send_game_rep(sender, game)
-			except Exception as e:
-				print('Exception: ', e)
-				send_message(sender, 'Something went wrong there')
+
+		# if message == 'show':
+		# 	game = get_active_game()
+		# 	send_game_rep(sender, game)
+		# elif message == 'new':
+		# 	game = Game()
+		# 	save_game(game)
+		# 	send_game_rep(sender, game)
+		# else:
+		# 	game = get_active_game()
+		# 	try:
+		# 		game.board.push_san(message)
+		# 		save_game(game)
+		# 		send_game_rep(sender, game)
+		# 	except Exception as e:
+		# 		print('Exception: ', e)
+		# 		send_message(sender, 'Something went wrong there')
 
 	return 'ok'
+
+def handle_move(sender, message):
+	game = get_active_game(sender)
+	if not game:
+		send_message(sender, 'You have no active games')
+		return True
+
+	if not game.is_active_player(sender):
+		send_message(sender, "It isn't your turn")
+		return True
+
+	try:
+		game.board.parse_san(message)
+	except ValueError:
+		send_message(sender, 'That is an invalid move')
+		return True
+
+	nickname = nickname_from_id(sender)
+	game.board.push_san(message)
+	save_game(game)
+
+	opponentid = game.black if game.white == sender else game.white
+
+	if sender == game.white:
+		send_game_rep(sender, game)
+		send_message(opponentid, f'{nickname} played {message}')
+		send_game_rep(opponentid, game, False)
+	else:
+		send_game_rep(sender, game, False)
+		send_message(opponentid, f'{nickname} played {message}')
+		send_game_rep(opponentid, game)
+
+	# send_game_rep(game, )
+
+	pass
 
 def handle_help(sender, message):
 	if re.match(r'^\s*help\s$', message, re.IGNORECASE):
@@ -227,6 +332,72 @@ def set_nickname(sender, nickname):
 # print('register', handle_register('83832204', 'mY naMe is JejaiSS'))
 # exit()
 
+def id_from_nickname(nickname):
+	with get_cursor() as cur:
+		cur.execute('SELECT id FROM player WHERE LOWER(nickname) = LOWER(%s)', [nickname])
+		result = cur.fetchone()
+		if result:
+			return str(result[0])
+		return None
+
+def nickname_from_id(playerid):
+	with get_cursor() as cur:
+		cur.execute('SELECT nickname FROM player WHERE id = %s', [playerid])
+		result = cur.fetchone()
+		if result:
+			return result[0]
+		return None
+
+def get_opponent_context(playerid):
+	with get_cursor() as cur:
+		cur.execute('SELECT opponent_context FROM player WHERE id = %s', [playerid])
+		result = cur.fetchone()
+		if result:
+			return result[0]
+		return None
+
+kewlid = id_from_nickname('kewl')
+shawnid = id_from_nickname('shawn')
+
+def set_opponent_context(challengerid, opponentid):
+	with get_cursor() as cur:
+		cur.execute('UPDATE player SET opponent_context = %s WHERE id = %s', [opponentid, challengerid])
+		cur.execute('UPDATE player SET opponent_context = %s WHERE id = %s', [challengerid, opponentid])
+		cur.connection.commit()
+
+
+def handle_play(sender, message):
+	playerid = int(sender)
+	m = re.match(r'^play\s+against\s+([a-z]+[0-9]*)$', message, re.IGNORECASE)
+	if m:
+		nickname = m.groups()[0]
+		opponentid = id_from_nickname(nickname)
+		if opponentid:
+			set_opponent_context(sender, opponentid)
+			send_message(sender, f'You are now playing against {nickname}')
+			challenger_nickname = nickname_from_id(sender)
+			send_message(opponentid, f'You are now playing against {challenger_nickname}')
+		else:
+			send_message(sender, f"No player named '{nickname}'")
+		return True
+	return False
+
+def handle_new(sender, message):
+	# playerid = int(sender)
+	m = re.match(r'^new game (white|black)$', message, re.IGNORECASE)
+	if m:
+		opponentid = get_opponent_context(sender)
+		if not opponentid:
+			send_message(sender, "You aren't playing against anyone (Use command 'play against <name>')")
+			return True
+		color = m.groups()[0].lower()
+		if color == 'white':
+			whiteplayer, blackplayer = sender, opponentid
+		else:
+			whiteplayer, blackplayer = opponentid, sender
+		create_new_game(whiteplayer, blackplayer)
+		return True
+	return False
 
 # print(set_nickname('8323', 'nate'))
 
@@ -242,7 +413,7 @@ def messaging_events(payload):
 		else:
 			yield event["sender"]["id"], "I can't echo this"
 
-def send_game_rep(recipient, game):
+def send_game_rep(recipient, game, perspective=True):
 	r = requests.post('https://graph.facebook.com/v2.9/me/messages',
 		params={'access_token': PAGE_ACCESS_TOKEN},
 		data=json.dumps({
@@ -252,7 +423,7 @@ def send_game_rep(recipient, game):
 				'attachment': {
 					'type': 'image',
 					'payload': {
-						'url': game.image_url()
+						'url': game.image_url(perspective)
 					}
 				}
 			}
@@ -301,7 +472,14 @@ def create_board_image(board):
 
 	return board_image
 
+import sys
 
-if __name__ == '__main__':
+if __name__ == '__main__' and not sys.flags.debug:
 	app.run(host='0.0.0.0')
-	# pass
+
+if sys.flags.debug:
+	def send_message (sender, message):
+		print(f'Send message: {sender} - {message}')
+	def send_game_rep(recipient, game, perspective=True):
+		url = game.image_url(perspective)
+		print(f'Send game board: {recipient} - {url}')
