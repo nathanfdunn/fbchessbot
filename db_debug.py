@@ -55,15 +55,15 @@ def migration2():
 		cur.connection.commit()
 
 # migration2()
-with get_cursor() as cur:
-	cur.execute("""
-		INSERT INTO player (id, nickname, opponent_context) VALUES 
-			(1, 'Jambi', NULL),
-			(2, 'Jaother', 1)
+# with get_cursor() as cur:
+# 	cur.execute("""
+# 		INSERT INTO player (id, nickname, opponent_context) VALUES 
+# 			(1, 'Jambi', NULL),
+# 			(2, 'Jaother', 1)
 
-		""")
-	cur.connection.commit()
+# 		""")
+# 	cur.connection.commit()
 
-cur = get_cursor()
+# cur = get_cursor()
 # cur = migration2()
 

@@ -171,9 +171,10 @@ def handle_help(sender, message):
 	else:
 		return False
 
-# def user_is_registered(sender):
-# 	with get_cursor() as cur:
-
+def user_is_registered(sender):
+	with get_cursor() as cur:
+		cur.execute('SELECT COUNT(*) FROM player WHERE id = %s', [playerid])
+		return bool(cur.fetchone())
 
 
 def handle_register(sender, message):
@@ -206,8 +207,8 @@ def set_nickname(sender, nickname):
 			cur.connection.commit()
 			return True
 		else:				# user does not exist
-			cur.execute()
-			cur.connection.commit('INSERT INTO player (id, nickname) VALUES (%s, %s)', [nickname, playerid])
+			cur.execute('INSERT INTO player (id, nickname) VALUES (%s, %s)', [nickname, playerid])
+			cur.connection.commit()
 			return False
 
 			# send_game_rep()
