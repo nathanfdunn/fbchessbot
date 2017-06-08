@@ -1,5 +1,6 @@
 import chess
 from flask import Flask, request, send_file
+import functools
 import json
 import os
 import pickle
@@ -104,6 +105,7 @@ def board_image():
 	# print('huh', dir(request))
 	# return send_file('board.png')
 
+
 @app.route('/', methods=['GET'])
 def hello():
 	print('processing root get')
@@ -119,7 +121,19 @@ def verify():
 		print('Verification failed')
 		return 'Error, wrong validation token'
 
+
+def dontcrash(func):
+	@functools.wraps(func)
+	def wrapper(*args, **kwargs):
+		try:
+			return func(*args, **kwargs)
+		except Exception as e:
+			print(e)
+			return 'ok'
+	return wrapper
+
 @app.route('/webhook', methods=['POST'])
+@dontcrash
 def messages():
 	print('Handling messages')
 	for sender, message in messaging_events(request.get_data()):
