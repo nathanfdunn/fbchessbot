@@ -172,7 +172,7 @@ def handle_help(sender, message):
 		return False
 
 def handle_register(sender, message):
-	m = re.match(r'^my\s+name\s+is\s+([a-z]+[0-9]*)')
+	m = re.match(r'^my\s+name\s+is\s+([a-z]+[0-9]*)', message)
 	if m:
 		nickname = m.groups()[0]
 		if len(nickname) > 32:
@@ -185,7 +185,7 @@ def handle_register(sender, message):
 			send_message(sender, f'Set your nickname to {nickname}')
 
 		return True
-	elif re.match(r'^my\s+name\s+is\s+'):
+	elif re.match(r'^my\s+name\s+is\s+', message):
 		send_message(sender, 'Nickname must match regex [a-z]+[0-9]*')
 		return True
 	else:
