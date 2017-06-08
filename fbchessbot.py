@@ -143,7 +143,7 @@ def messages():
 		done = handle_help(sender, message) or handle_register(sender, message)
 		if done:
 			continue
-		if user_is_registered(sender)
+		# if user_is_registered(sender)
 
 		if message == 'show':
 			game = get_active_game()
