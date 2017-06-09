@@ -42,7 +42,9 @@ class Game:
 		if perspective == BLACK:
 			fen = '/'.join(line[::-1] for line in reversed(fen.split('/')))
 
-		return 'https://fbchessbot.herokuapp.com/image?fen=' + quote_plus(fen)
+		fen = fen.replace('/', '-')
+		return f'https://fbchessbot.herokuapp.com/image/{fen}'
+		# return 'https://fbchessbot.herokuapp.com/image?fen=' + quote_plus(fen)
 
 	def is_active_player(self, playerid):
 		WHITE = True
@@ -144,18 +146,21 @@ app = Flask(__name__)
 
 print('Ok, we made it to app instantiation')
 
-@app.route('/image', methods=['GET'])
-def board_image():
+@app.route('/image/<fen>', methods=['GET'])
+def board_image(fen):
 	print('Received image request')
-	if 'fen' not in request.args:
-		return 'Invalid FEN'
-	fen = unquote_plus(request.args.get('fen')) + ' w - - 0 1'
+	# if 'fen' not in request.args:
+	# 	return 'Invalid FEN'
+	# fen = unquote_plus(request.args.get('fen')) + ' w - - 0 1'
+	board_image_name = f'/tmp/{fen}.png'
+
+	fen = fen.replace('-', '/')  + ' w - - 0 1'
 
 	print('decoded FEN', fen)
 
 	board = chess.Board(fen)
-	board_image_name = '/tmp/' + str(board.board_zobrist_hash()) + '.png'
-	
+	# board_image_name = '/tmp/' + str(board.board_zobrist_hash()) + '.png'
+
 	# TODO test if image already exists
 	print('board is', board)
 	board_string_array = str(board).replace(' ', '').split('\n')
@@ -195,15 +200,15 @@ def dontcrash(func):
 			return 'ok'
 	return wrapper
 
-import datetime
+# import datetime
 
 @app.route('/webhook', methods=['POST'])
 @dontcrash
 def messages():
-	with get_cursor() as cur:
-		cur.execute("""
-			INSERT INTO scratch (key, value) VALUES (%s, %s)
-			""", [str(datetime.datetime.now()), pickle.dumps(request)])
+	# with get_cursor() as cur:
+	# 	cur.execute("""
+	# 		INSERT INTO scratch (key, value) VALUES (%s, %s)
+	# 		""", [str(datetime.datetime.now()), pickle.dumps(request)])
 	print('Handling messages')
 	for sender, message in messaging_events(request.get_data()):
 		print('Incoming from {}: {}'.format(sender, message))
