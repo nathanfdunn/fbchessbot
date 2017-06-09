@@ -195,9 +195,15 @@ def dontcrash(func):
 			return 'ok'
 	return wrapper
 
+import datetime
+
 @app.route('/webhook', methods=['POST'])
 @dontcrash
 def messages():
+	with get_cursor() as cur:
+		cur.execute("""
+			INSERT INTO scratch (key, value) VALUES (%s, %s)
+			""", [str(datetime.datetime.now()), pickle.dumps(request)])
 	print('Handling messages')
 	for sender, message in messaging_events(request.get_data()):
 		print('Incoming from {}: {}'.format(sender, message))

@@ -54,6 +54,16 @@ def migration2():
 
 		cur.connection.commit()
 
+def migration3():
+	with get_cursor() as cur:
+		cur.execute("""
+			CREATE TABLE IF NOT EXISTS scratch (
+				key VARCHAR(32) PRIMARY KEY,
+				value BYTEA
+			)
+			""")
+		cur.connection.commit()
+
 cur = None
 def op():
 	global cur
