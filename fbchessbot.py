@@ -368,7 +368,7 @@ def get_opponent_context(playerid):
 			return result[0]
 		return None
 
-kewlid = id_from_nickname('kewl')
+kewlid = id_from_nickname('nate')
 shawnid = id_from_nickname('shawn')
 
 def set_opponent_context(challengerid, opponentid):
@@ -381,18 +381,23 @@ def set_opponent_context(challengerid, opponentid):
 def handle_play(sender, message):
 	playerid = int(sender)
 	m = re.match(r'^play\s+against\s+([a-z]+[0-9]*)$', message, re.IGNORECASE)
-	if m:
-		nickname = m.groups()[0]
-		opponentid = id_from_nickname(nickname)
-		if opponentid:
-			set_opponent_context(sender, opponentid)
-			send_message(sender, f'You are now playing against {nickname}')
-			challenger_nickname = nickname_from_id(sender)
-			send_message(opponentid, f'You are now playing against {challenger_nickname}')
-		else:
-			send_message(sender, f"No player named '{nickname}'")
-		return True
-	return False
+	if not m:
+		return False
+
+	nickname = m.groups()[0]
+	opponentid = id_from_nickname(nickname)
+	if opponentid:
+		opponent_opponent_context = get_opponent_context(opponentid)
+		if not opponent_opponent_context:
+			sender_nickname = nickname_from_id(sender)
+			set_opponent_context(opponentid, sender)
+			send_message(opponentid, f'You are now playing against {sender_nickname}')
+		set_opponent_context(sender, opponentid)
+		send_message(sender, f'You are now playing against {nickname}')
+	else:
+		send_message(sender, f"No player named '{nickname}'")
+
+	return True
 
 def handle_new(sender, message):
 	# playerid = int(sender)
