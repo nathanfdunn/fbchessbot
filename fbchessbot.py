@@ -214,10 +214,10 @@ def messages():
 		print('Incoming from {}: {}'.format(sender, message))
 		message = message.strip()
 
-		if message == 'show':
+		if message.lower() == 'show':
 			game = get_active_game(sender)
 			send_game_rep(sender, game, game.white == sender)
-			active = 'White' if game.board.Turn else 'Black'
+			active = 'White' if game.board.turn else 'Black'
 			send_message(sender, active + ' to move')
 
 		done = (handle_help(sender, message) 
