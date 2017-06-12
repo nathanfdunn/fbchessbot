@@ -217,7 +217,8 @@ def messages():
 		if message == 'show':
 			game = get_active_game(sender)
 			send_game_rep(sender, game, game.white == sender)
-			continue
+			active = 'White' if game.board.Turn else 'Black'
+			send_message(sender, active + ' to move')
 
 		done = (handle_help(sender, message) 
 			or handle_register(sender, message)
