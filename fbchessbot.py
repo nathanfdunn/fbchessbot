@@ -258,7 +258,7 @@ def handle_help(sender, message):
 		return False
 
 def handle_undo(sender, message):
-	if not re.match(r'^\s*undo\s*$', message):
+	if not re.match(r'^\s*undo\s*$', message, re.IGNORECASE):
 		return False
 	g = get_active_game(sender)
 	if not g:
