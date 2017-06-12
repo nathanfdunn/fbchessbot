@@ -64,6 +64,14 @@ def migration3():
 			""")
 		cur.connection.commit()
 
+def migration4():
+	with get_cursor() as cur:
+		cur.execute("""
+			ALTER TABLE games
+			ADD COLUMN undo BOOLEAN DEFAULT FALSE
+			""")
+		cur.connection.commit()
+
 cur = None
 def op():
 	global cur

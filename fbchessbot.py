@@ -23,8 +23,9 @@ class Game:
 			self.board = chess.Board()
 			self.white = None
 			self.black = None
+			self.undo = False
 		else:
-			self.id, raw_board, self.active, self.white, self.black = data_row
+			self.id, raw_board, self.active, self.white, self.black, self.undo = data_row
 			self.white, self.black = str(self.white), str(self.black)
 			self.board = pickle.loads(bytes(raw_board))
 
@@ -65,33 +66,6 @@ def get_cursor():
 	)
 	return conn.cursor()
 
-# I guess we'll deactivate any...
-# Probably shouldn't use the game object after this...
-# def save_game(game):
-# 	with get_cursor() as cur:
-# 		cur.execute("UPDATE games SET active = FALSE WHERE 1=1")		# probably can ommit 1=1
-# 		# Assume we only ever have an id if ...
-# 		if game.id is None:
-# 			cur.execute("INSERT INTO games (board, active) values (%s, TRUE)", [game.serialized()])
-# 		else:
-# 			# cur.execute("SELECT EXISTS(SELECT * FROM games WHERE id = %s)", [game.id])
-# 			# if cur.fetchone()[0]:
-# 			# Need to update
-# 			cur.execute("UPDATE games SET board = %s, active = TRUE WHERE id = %s", [game.serialized(), game.id])
-# 		cur.connection.commit()
-
-# # Auto intialize (bad practice)
-# def get_active_game():
-# 	with get_cursor() as cur:
-# 		cur.execute("SELECT id, board, active FROM games WHERE active = TRUE")
-# 		row = cur.fetchone()
-
-# 	if row is None:
-# 		save_game(Game())
-# 		return get_active_game()
-# 	print('retrived row is', row)
-# 	return Game(row)
-
 def get_active_game(sender):
 	with get_cursor() as cur:
 		cur.execute("SELECT opponent_context FROM player WHERE id = %s", [sender])
@@ -99,7 +73,7 @@ def get_active_game(sender):
 		if opponentid:
 			opponentid = opponentid[0]
 			cur.execute("""
-				SELECT id, board, active, whiteplayer, blackplayer
+				SELECT id, board, active, whiteplayer, blackplayer, undo
 				FROM games WHERE 
 				active = TRUE AND (
 					(whiteplayer = %s AND blackplayer = %s)
@@ -124,6 +98,13 @@ def save_game(game):
 			''', [game.serialized(), game.id])
 		cur.connection.commit()
 
+def set_undo_flag(game, undo_flag):
+	with get_cursor() as cur:
+		cur.execute('''
+			UPDATE games SET undo = %s WHERE id = %s
+			''', [undo_flag, game.id])
+		cur.connection.commit()
+
 def create_new_game(whiteplayer, blackplayer):
 	with get_cursor() as cur:
 		new_game = Game()
@@ -136,8 +117,8 @@ def create_new_game(whiteplayer, blackplayer):
 			""", [whiteplayer, blackplayer, whiteplayer, blackplayer])
 
 		cur.execute("""
-			INSERT INTO games (board, active, whiteplayer, blackplayer) VALUES (
-				%s, TRUE, %s, %s
+			INSERT INTO games (board, active, whiteplayer, blackplayer, undo) VALUES (
+				%s, TRUE, %s, %s, FALSE
 			)
 			""", [new_game.serialized(), whiteplayer, blackplayer])
 		cur.connection.commit()
@@ -220,8 +201,9 @@ def messages():
 			active = 'White' if game.board.turn else 'Black'
 			send_message(sender, active + ' to move')
 			continue
-			
-		done = (handle_help(sender, message) 
+
+		done = (handle_help(sender, message)
+			or handle_undo(sender, message)
 			or handle_register(sender, message)
 			or handle_play(sender, message)
 			or handle_new(sender, message)
@@ -230,21 +212,6 @@ def messages():
 
 		if done:
 			continue
-
-
-		# elif message == 'new':
-		# 	game = Game()
-		# 	save_game(game)
-		# 	send_game_rep(sender, game)
-		# else:
-		# 	game = get_active_game()
-		# 	try:
-		# 		game.board.push_san(message)
-		# 		save_game(game)
-		# 		send_game_rep(sender, game)
-		# 	except Exception as e:
-		# 		print('Exception: ', e)
-		# 		send_message(sender, 'Something went wrong there')
 
 	return 'ok'
 
@@ -284,11 +251,38 @@ def handle_move(sender, message):
 	pass
 
 def handle_help(sender, message):
-	if re.match(r'^\s*help\s$', message, re.IGNORECASE):
+	if re.match(r'^\s*help\s*$', message, re.IGNORECASE):
 		send_message(sender, 'Help text coming soon...')
 		return True
 	else:
 		return False
+
+def handle_undo(sender, message):
+	if not re.match(r'^\s*undo\s*$', message):
+		return False
+	g = get_active_game(sender)
+	if not g:
+		send_message(sender, 'You have no active games')
+		return True
+	if g.undo:
+		if g.is_active_player(sender):
+			g.board.pop()
+			set_undo_flag(g, False)
+			save_game(g)
+			opponentid = g.black if g.white == sender else g.white
+			nickname = nickname_from_id(sender)
+			send_message(opponentid, f'{nickname} accepted your undo request')
+			show_game_to_both(g)
+		else:
+			send_message(sender, 'You have already requested an undo')
+	else:
+		opponentid = g.black if g.white == sender else g.white
+		nickname = nickname_from_id(sender)
+		set_undo_flag(g, True)
+		send_message(opponentid, f'{nickname} has requested an undo')
+	return True
+
+
 
 def user_is_registered(sender):
 	with get_cursor() as cur:
