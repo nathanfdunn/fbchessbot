@@ -234,6 +234,7 @@ def handle_move(sender, message):
 	nickname = nickname_from_id(sender)
 	game.board.push_san(message)
 	save_game(game)
+	set_undo_flag(game, False)
 
 	opponentid = game.black if game.white == sender else game.white
 
