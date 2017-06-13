@@ -3,20 +3,35 @@ Get better Facebook Page name
 
 Add better turn utility methods to Game
 
+End game condition
+
+Case insensitive pawn moves -?
+
+Improve testing framework
+
+Feedback for why move is invalid
 
 Break out into logical components
 
-Revisit creative commons sprites
-Make a border for the board
+Refactor command processing
 
-Clean up image service url
+Consolidate db calls
 
-Make sprites smoother?
 Create player / game contexts
 Add Check! notifications
 Add Game over notifications
-Add help command
-Test out @ mentions
 
-Add Casey as a contributor
+Add help command
+
+Test out @ mentions		
+
+PGN
+
+
+
+Revisit creative commons sprites
+Make a border for the board
+Make sprites smoother?
+Clean up image service url
+
 
