@@ -41,6 +41,9 @@ class Game:
 		return f'https://fbchessbot.herokuapp.com/image/{fen}'
 		# return 'https://fbchessbot.herokuapp.com/image?fen=' + quote_plus(fen)
 
+	def pgn_url(self):
+		return f'https://fbchessbot.herokuapp.com/pgn/{self.id}.pgn'
+
 	def is_active_player(self, playerid):
 		WHITE = True
 		if self.board.turn == WHITE:		
@@ -122,6 +125,16 @@ class DB:
 				return None
 			else:			# no active game
 				return None
+
+	def game_from_id(self, game_id):
+		with self.cursor() as cur:
+			cur.execute("""
+				SELECT id, board, active, whiteplayer, blackplayer, undo
+				FROM games WHERE 
+				id = %s
+				""", [game_id])
+			# Assumes there will be a match
+			return Game(cur.fetchone())
 
 	def user_is_registered(self, sender):
 		with self.cursor() as cur:

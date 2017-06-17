@@ -1,4 +1,5 @@
-# import chess
+import chess
+import chess.pgn
 from flask import Flask, request, send_file
 import functools
 import json
@@ -158,6 +159,18 @@ def board_image(fen):
 	# print('huh', dir(request))
 	# return send_file('board.png')
 
+@app.route('/pgn/<game_id>', methods=['GET'])
+def board_pgn(game_id):
+	print(f'Generating PGN for {game_id}')
+	game = db.game_from_id(game_id.strip('.pgn'))
+	print(game.board)
+	pgn = chess.pgn.Game.from_board(game.board)
+	print(pgn)
+	with open(game_id, 'w') as f:
+		exporter = chess.pgn.FileExporter(f)
+		pgn.accept(exporter)
+	return send_file(game_id)
+
 
 @app.route('/', methods=['GET'])
 def hello():
@@ -187,6 +200,17 @@ def dontcrash(func):
 
 # import datetime
 
+def handle_message(sender, message):
+	(handle_show(sender, message)
+		or handle_help(sender, message)
+		or handle_undo(sender, message)
+		or handle_register(sender, message)
+		or handle_play(sender, message)
+		or handle_new(sender, message)
+		or handle_pgn(sender, message)
+		or handle_move(sender, message)
+	)
+
 @app.route('/webhook', methods=['POST'])
 @dontcrash
 def messages():
@@ -198,26 +222,26 @@ def messages():
 	for sender, message in messaging_events(request.get_data()):
 		print('Incoming from {}: {}'.format(sender, message))
 		message = message.strip()
-
-		if message.lower() == 'show':
-			game = db.get_active_game(sender)
-			send_game_rep(sender, game, game.white == sender)
-			active = 'White' if game.board.turn else 'Black'
-			send_message(sender, active + ' to move')
-			continue
-
-		done = (handle_help(sender, message)
-			or handle_undo(sender, message)
-			or handle_register(sender, message)
-			or handle_play(sender, message)
-			or handle_new(sender, message)
-			or handle_move(sender, message)
-		)
-
-		if done:
-			continue
+		handle_message(sender, message)
 
 	return 'ok'
+
+def handle_show(sender, message):
+	if re.match(r'^\s*show\s*$', message, re.IGNORECASE):
+		game = db.get_active_game(sender)
+		send_game_rep(sender, game, game.white == sender)
+		active = 'White' if game.board.turn else 'Black'
+		send_message(sender, active + ' to move')
+		return True
+	return False
+
+def handle_pgn(sender, message):
+	if re.match(r'^\s*pgn\s*$', message, re.IGNORECASE):
+		game = db.get_active_game(sender)
+		send_pgn(sender, game)
+		return True
+	else:
+		return False
 
 def handle_move(sender, message):
 	game = db.get_active_game(sender)
@@ -435,6 +459,26 @@ def messaging_events(payload):
 		else:
 			yield event["sender"]["id"], "I can't echo this"
 
+def send_pgn(recipient, game):
+	r = requests.post('https://graph.facebook.com/v2.9/me/messages',
+		params={'access_token': PAGE_ACCESS_TOKEN},
+		data=json.dumps({
+			'recipient': {'id': recipient},
+			# 'message': {'text': str(game.board)}
+			'message': {
+				'attachment': {
+					'type': 'image',
+					'payload': {
+						'url': game.pgn_url()
+					}
+				}
+			}
+		}),
+		headers={'Content-type': 'application/json'}
+	)
+	if r.status_code != requests.codes.ok:
+		print('Error I think:', r.text)
+
 def send_game_rep(recipient, game, perspective=True):
 	r = requests.post('https://graph.facebook.com/v2.9/me/messages',
 		params={'access_token': PAGE_ACCESS_TOKEN},
@@ -501,12 +545,15 @@ def create_board_image(board):
 
 import sys
 
-if __name__ == '__main__' and not sys.flags.debug:
-	app.run(host='0.0.0.0')
-
 if sys.flags.debug:
 	def send_message (sender, message):
 		print(f'Send message: {sender} - {message}')
 	def send_game_rep(recipient, game, perspective=True):
 		url = game.image_url(perspective)
 		print(f'Send game board: {recipient} - {url}')
+	def send_pgn(recipient, game):
+		url = game.pgn_url()
+		print(f'Send pgn: {recipient} - {url}')
+
+if __name__ == '__main__': # and not sys.flags.debug:
+	app.run(host='0.0.0.0')
