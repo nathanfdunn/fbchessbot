@@ -467,6 +467,7 @@ def messaging_events(payload):
 			yield event["sender"]["id"], "I can't echo this"
 
 def send_pgn(recipient, game):
+	print('pgn url:', game.pgn_url())
 	r = requests.post('https://graph.facebook.com/v2.9/me/messages',
 		params={'access_token': PAGE_ACCESS_TOKEN},
 		data=json.dumps({
@@ -474,7 +475,7 @@ def send_pgn(recipient, game):
 			# 'message': {'text': str(game.board)}
 			'message': {
 				'attachment': {
-					'type': 'image',
+					'type': 'file',
 					'payload': {
 						'url': game.pgn_url()
 					}
@@ -562,5 +563,5 @@ if sys.flags.debug:
 		url = game.pgn_url()
 		print(f'Send pgn: {recipient} - {url}')
 
-if __name__ == '__main__' and not sys.flags.debug:
+if __name__ == '__main__' and not sys.flags.debug and False:
 	app.run(host='0.0.0.0')
