@@ -1,127 +1,131 @@
-import chess
+# import chess
 from flask import Flask, request, send_file
 import functools
 import json
 import os
-import pickle
+# import pickle
 from PIL import Image, ImageDraw
 import psycopg2
 import re
 import requests
 from urllib.parse import urlparse, quote_plus, unquote_plus
+import dbactions
 
 VERIFY_TOKEN = 'tobeornottobeerobot'
 PAGE_ACCESS_TOKEN = 'EAADbx7arRPQBANSbXpPFJStuljMm1ZCiiPmOA3UrG5FFkSDwffYiX3HgIVw4ZCaZAsAUsudTbIUP1ZCOTmpgajNKMMNjGB4rvqFgb0e2YMabSAv1kOvrxl0arVfqiqXKv2N2h1iu35AS95wiLxIQTx4zajbkjPzPXaeizc0rxwZDZD'
 # DATABASE_URL = os.environ['DATABASE_URL']
 DATABASE_URL = 'postgres://vjqgstovnxmxhf:627707772b1836a5b792c3087a1b56c401330158c24a3f3aead4ac64c0145727@ec2-184-73-236-170.compute-1.amazonaws.com:5432/ddnssqbrihnoje'
 
-class Game:
-	def __init__(self, data_row = None):
-		if data_row is None:
-			self.id = None
-			self.active = False
-			self.board = chess.Board()
-			self.white = None
-			self.black = None
-			self.undo = False
-		else:
-			self.id, raw_board, self.active, self.white, self.black, self.undo = data_row
-			self.white, self.black = str(self.white), str(self.black)
-			self.board = pickle.loads(bytes(raw_board))
 
-	def display(self):
-		print(self.board)
+db = dbactions.DB()
 
-		# Technically it's just the board that's serialized
-	def serialized(self):
-		return pickle.dumps(self.board)
+# class Game:
+# 	def __init__(self, data_row = None):
+# 		if data_row is None:
+# 			self.id = None
+# 			self.active = False
+# 			self.board = chess.Board()
+# 			self.white = None
+# 			self.black = None
+# 			self.undo = False
+# 		else:
+# 			self.id, raw_board, self.active, self.white, self.black, self.undo = data_row
+# 			self.white, self.black = str(self.white), str(self.black)
+# 			self.board = pickle.loads(bytes(raw_board))
 
-	def image_url(self, perspective=True):
-		BLACK = False
-		fen = self.board.fen().split()[0]
+# 	def display(self):
+# 		print(self.board)
 
-		if perspective == BLACK:
-			fen = '/'.join(line[::-1] for line in reversed(fen.split('/')))
+# 		# Technically it's just the board that's serialized
+# 	def serialized(self):
+# 		return pickle.dumps(self.board)
 
-		fen = fen.replace('/', '-')
-		return f'https://fbchessbot.herokuapp.com/image/{fen}'
-		# return 'https://fbchessbot.herokuapp.com/image?fen=' + quote_plus(fen)
+# 	def image_url(self, perspective=True):
+# 		BLACK = False
+# 		fen = self.board.fen().split()[0]
 
-	def is_active_player(self, playerid):
-		WHITE = True
-		if self.board.turn == WHITE:		
-			return playerid == self.white
-		else:
-			return playerid == self.black
+# 		if perspective == BLACK:
+# 			fen = '/'.join(line[::-1] for line in reversed(fen.split('/')))
+
+# 		fen = fen.replace('/', '-')
+# 		return f'https://fbchessbot.herokuapp.com/image/{fen}'
+# 		# return 'https://fbchessbot.herokuapp.com/image?fen=' + quote_plus(fen)
+
+# 	def is_active_player(self, playerid):
+# 		WHITE = True
+# 		if self.board.turn == WHITE:		
+# 			return playerid == self.white
+# 		else:
+# 			return playerid == self.black
 
 
-def get_cursor():
-	url = urlparse(DATABASE_URL)
-	conn = psycopg2.connect(
-		database=url.path[1:],
-		user=url.username,
-		password=url.password,
-		host=url.hostname,
-		port=url.port
-	)
-	return conn.cursor()
+# def get_cursor():
+# 	url = urlparse(DATABASE_URL)
+# 	conn = psycopg2.connect(
+# 		database=url.path[1:],
+# 		user=url.username,
+# 		password=url.password,
+# 		host=url.hostname,
+# 		port=url.port
+# 	)
+# 	return conn.cursor()
 
-def get_active_game(sender):
-	with get_cursor() as cur:
-		cur.execute("SELECT opponent_context FROM player WHERE id = %s", [sender])
-		opponentid = cur.fetchone()
-		if opponentid:
-			opponentid = opponentid[0]
-			cur.execute("""
-				SELECT id, board, active, whiteplayer, blackplayer, undo
-				FROM games WHERE 
-				active = TRUE AND (
-					(whiteplayer = %s AND blackplayer = %s)
-					OR
-					(blackplayer = %s AND whiteplayer = %s)
-				)
-				""", [sender, opponentid, sender, opponentid])
-			# For now we don't want to impact the game if there is something wrong
-			# assert cur.rowcount <= 1
-			result = cur.fetchone()
-			if result:
-				return Game(result)
+# def get_active_game(sender):
+# 	with get_cursor() as cur:
+# 		cur.execute("SELECT opponent_context FROM player WHERE id = %s", [sender])
+# 		opponentid = cur.fetchone()
+# 		if opponentid:
+# 			opponentid = opponentid[0]
+# 			cur.execute("""
+# 				SELECT id, board, active, whiteplayer, blackplayer, undo
+# 				FROM games WHERE 
+# 				active = TRUE AND (
+# 					(whiteplayer = %s AND blackplayer = %s)
+# 					OR
+# 					(blackplayer = %s AND whiteplayer = %s)
+# 				)
+# 				""", [sender, opponentid, sender, opponentid])
+# 			# For now we don't want to impact the game if there is something wrong
+# 			# assert cur.rowcount <= 1
+# 			result = cur.fetchone()
+# 			if result:
+# 				return Game(result)
 
-			return None
-		else:			# no active game
-			return None
+# 			return None
+# 		else:			# no active game
+# 			return None
 
-def save_game(game):
-	with get_cursor() as cur:
-		cur.execute('''
-			UPDATE games SET board = %s WHERE id = %s
-			''', [game.serialized(), game.id])
-		cur.connection.commit()
+# def save_game(game):
+# 	with get_cursor() as cur:
+# 		cur.execute('''
+# 			UPDATE games SET board = %s WHERE id = %s
+# 			''', [game.serialized(), game.id])
+# 		cur.connection.commit()
 
-def set_undo_flag(game, undo_flag):
-	with get_cursor() as cur:
-		cur.execute('''
-			UPDATE games SET undo = %s WHERE id = %s
-			''', [undo_flag, game.id])
-		cur.connection.commit()
+# def set_undo_flag(game, undo_flag):
+# 	with get_cursor() as cur:
+# 		cur.execute('''
+# 			UPDATE games SET undo = %s WHERE id = %s
+# 			''', [undo_flag, game.id])
+# 		cur.connection.commit()
 
-def create_new_game(whiteplayer, blackplayer):
-	with get_cursor() as cur:
-		new_game = Game()
-		# TODO remove probably because we won't be able to start a new game if old isn't finished
-		cur.execute("""
-			UPDATE games SET active = FALSE WHERE 
-			(whiteplayer = %s AND blackplayer = %s)
-			OR
-			(blackplayer = %s AND whiteplayer = %s)
-			""", [whiteplayer, blackplayer, whiteplayer, blackplayer])
+# def create_new_game(whiteplayer, blackplayer):
+# 	with get_cursor() as cur:
+# 		new_game = Game()
+# 		# TODO remove probably because we won't be able to start a new game if old isn't finished
+# 		cur.execute("""
+# 			UPDATE games SET active = FALSE WHERE 
+# 			(whiteplayer = %s AND blackplayer = %s)
+# 			OR
+# 			(blackplayer = %s AND whiteplayer = %s)
+# 			""", [whiteplayer, blackplayer, whiteplayer, blackplayer])
 
-		cur.execute("""
-			INSERT INTO games (board, active, whiteplayer, blackplayer, undo) VALUES (
-				%s, TRUE, %s, %s, FALSE
-			)
-			""", [new_game.serialized(), whiteplayer, blackplayer])
-		cur.connection.commit()
+# 		cur.execute("""
+# 			INSERT INTO games (board, active, whiteplayer, blackplayer, undo) VALUES (
+# 				%s, TRUE, %s, %s, FALSE
+# 			)
+# 			""", [new_game.serialized(), whiteplayer, blackplayer])
+# 		cur.connection.commit()
 
 app = Flask(__name__)
 
@@ -196,7 +200,7 @@ def messages():
 		message = message.strip()
 
 		if message.lower() == 'show':
-			game = get_active_game(sender)
+			game = db.get_active_game(sender)
 			send_game_rep(sender, game, game.white == sender)
 			active = 'White' if game.board.turn else 'Black'
 			send_message(sender, active + ' to move')
@@ -216,7 +220,7 @@ def messages():
 	return 'ok'
 
 def handle_move(sender, message):
-	game = get_active_game(sender)
+	game = db.get_active_game(sender)
 	if not game:
 		send_message(sender, 'You have no active games')
 		return True
@@ -231,10 +235,10 @@ def handle_move(sender, message):
 		send_message(sender, 'That is an invalid move')
 		return True
 
-	nickname = nickname_from_id(sender)
+	nickname = db.nickname_from_id(sender)
 	game.board.push_san(message)
-	save_game(game)
-	set_undo_flag(game, False)
+	db.save_game(game)
+	db.set_undo_flag(game, False)
 
 	opponentid = game.black if game.white == sender else game.white
 
@@ -261,34 +265,34 @@ def handle_help(sender, message):
 def handle_undo(sender, message):
 	if not re.match(r'^\s*undo\s*$', message, re.IGNORECASE):
 		return False
-	g = get_active_game(sender)
+	g = db.get_active_game(sender)
 	if not g:
 		send_message(sender, 'You have no active games')
 		return True
 	if g.undo:
 		if g.is_active_player(sender):
 			g.board.pop()
-			set_undo_flag(g, False)
-			save_game(g)
+			db.set_undo_flag(g, False)
+			db.save_game(g)
 			opponentid = g.black if g.white == sender else g.white
-			nickname = nickname_from_id(sender)
+			nickname = db.nickname_from_id(sender)
 			send_message(opponentid, f'{nickname} accepted your undo request')
 			show_game_to_both(g)
 		else:
 			send_message(sender, 'You have already requested an undo')
 	else:
 		opponentid = g.black if g.white == sender else g.white
-		nickname = nickname_from_id(sender)
-		set_undo_flag(g, True)
+		nickname = db.nickname_from_id(sender)
+		db.set_undo_flag(g, True)
 		send_message(opponentid, f'{nickname} has requested an undo')
 	return True
 
 
 
-def user_is_registered(sender):
-	with get_cursor() as cur:
-		cur.execute('SELECT COUNT(*) FROM player WHERE id = %s', [int(sender)])
-		return bool(cur.fetchone()[0])
+# def user_is_registered(sender):
+# 	with get_cursor() as cur:
+# 		cur.execute('SELECT COUNT(*) FROM player WHERE id = %s', [int(sender)])
+# 		return bool(cur.fetchone()[0])
 
 
 def handle_register(sender, message):
@@ -314,65 +318,65 @@ def handle_register(sender, message):
 
 
 # Returns True if user is new
-def set_nickname(sender, nickname):
-	playerid = int(sender)
-	with get_cursor() as cur:
-		# cur.execute('SELECT COUNT(*) FROM player WHERE id = %s', [playerid])
-		# user_exists = cur.fetchone()[0]
-		user_exists = user_is_registered(sender)
-		# if cur.fetchone():	# user already exists
-		print('user_exists', user_exists)
-		if user_exists:
-			print('user existed')
-			cur.execute('UPDATE player SET nickname = %s WHERE id = %s', [nickname, playerid])
-			cur.connection.commit()
-			return False
-		else:				# user does not exist
-			print('user does not exist')
-			cur.execute('INSERT INTO player (id, nickname) VALUES (%s, %s)', [playerid, nickname])
-			cur.connection.commit()
-			return True
+# def set_nickname(sender, nickname):
+# 	playerid = int(sender)
+# 	with get_cursor() as cur:
+# 		# cur.execute('SELECT COUNT(*) FROM player WHERE id = %s', [playerid])
+# 		# user_exists = cur.fetchone()[0]
+# 		user_exists = user_is_registered(sender)
+# 		# if cur.fetchone():	# user already exists
+# 		print('user_exists', user_exists)
+# 		if user_exists:
+# 			print('user existed')
+# 			cur.execute('UPDATE player SET nickname = %s WHERE id = %s', [nickname, playerid])
+# 			cur.connection.commit()
+# 			return False
+# 		else:				# user does not exist
+# 			print('user does not exist')
+# 			cur.execute('INSERT INTO player (id, nickname) VALUES (%s, %s)', [playerid, nickname])
+# 			cur.connection.commit()
+# 			return True
 
 			# send_game_rep()
 
 		# send_message(sender, message)
-	return 'ok'
+	# return 'ok'
 	# return 200, 'ok'
 # print('register', handle_register('83832204', 'mY naMe is JejaiSS'))
 # exit()
 
-def id_from_nickname(nickname):
-	with get_cursor() as cur:
-		cur.execute('SELECT id FROM player WHERE LOWER(nickname) = LOWER(%s)', [nickname])
-		result = cur.fetchone()
-		if result:
-			return str(result[0])
-		return None
+# def id_from_nickname(nickname):
+# 	with get_cursor() as cur:
+# 		cur.execute('SELECT id FROM player WHERE LOWER(nickname) = LOWER(%s)', [nickname])
+# 		result = cur.fetchone()
+# 		if result:
+# 			return str(result[0])
+# 		return None
 
-def nickname_from_id(playerid):
-	with get_cursor() as cur:
-		cur.execute('SELECT nickname FROM player WHERE id = %s', [playerid])
-		result = cur.fetchone()
-		if result:
-			return result[0]
-		return None
+# def nickname_from_id(playerid):
+# 	with get_cursor() as cur:
+# 		cur.execute('SELECT nickname FROM player WHERE id = %s', [playerid])
+# 		result = cur.fetchone()
+# 		if result:
+# 			return result[0]
+# 		return None
 
-def get_opponent_context(playerid):
-	with get_cursor() as cur:
-		cur.execute('SELECT opponent_context FROM player WHERE id = %s', [playerid])
-		result = cur.fetchone()
-		if result:
-			return result[0]
-		return None
+# def get_opponent_context(playerid):
+# 	with get_cursor() as cur:
+# 		cur.execute('SELECT opponent_context FROM player WHERE id = %s', [playerid])
+# 		result = cur.fetchone()
+# 		if result:
+# 			return result[0]
+# 		return None
 
-kewlid = id_from_nickname('nate')
-shawnid = id_from_nickname('shawn')
+nateid = db.id_from_nickname('nate')
+shawnid = db.id_from_nickname('shawn')
 
-def set_opponent_context(challengerid, opponentid):
-	with get_cursor() as cur:
-		cur.execute('UPDATE player SET opponent_context = %s WHERE id = %s', [opponentid, challengerid])
-		cur.execute('UPDATE player SET opponent_context = %s WHERE id = %s', [challengerid, opponentid])
-		cur.connection.commit()
+# def set_opponent_context(challengerid, opponentid):
+# 	with get_cursor() as cur:
+# 		cur.execute('UPDATE player SET opponent_context = %s WHERE id = %s', [opponentid, challengerid])
+# 		cur.execute('UPDATE player SET opponent_context = %s WHERE id = %s', [challengerid, opponentid])
+# 		cur.connection.commit()
 
 
 def handle_play(sender, message):
@@ -382,14 +386,14 @@ def handle_play(sender, message):
 		return False
 
 	nickname = m.groups()[0]
-	opponentid = id_from_nickname(nickname)
+	opponentid = db.id_from_nickname(nickname)
 	if opponentid:
-		opponent_opponent_context = get_opponent_context(opponentid)
+		opponent_opponent_context = db.get_opponent_context(opponentid)
 		if not opponent_opponent_context:
-			sender_nickname = nickname_from_id(sender)
-			set_opponent_context(opponentid, sender)
+			sender_nickname = db.nickname_from_id(sender)
+			db.set_opponent_context(opponentid, sender)
 			send_message(opponentid, f'You are now playing against {sender_nickname}')
-		set_opponent_context(sender, opponentid)
+		db.set_opponent_context(sender, opponentid)
 		send_message(sender, f'You are now playing against {nickname}')
 	else:
 		send_message(sender, f"No player named '{nickname}'")
@@ -400,7 +404,7 @@ def handle_new(sender, message):
 	# playerid = int(sender)
 	m = re.match(r'^new game (white|black)$', message, re.IGNORECASE)
 	if m:
-		opponentid = get_opponent_context(sender)
+		opponentid = db.get_opponent_context(sender)
 		if not opponentid:
 			send_message(sender, "You aren't playing against anyone (Use command 'play against <name>')")
 			return True
@@ -409,10 +413,10 @@ def handle_new(sender, message):
 			whiteplayer, blackplayer = sender, opponentid
 		else:
 			whiteplayer, blackplayer = opponentid, sender
-		nickname = nickname_from_id(sender)
-		create_new_game(whiteplayer, blackplayer)
+		nickname = db.nickname_from_id(sender)
+		db.create_new_game(whiteplayer, blackplayer)
 		send_message(opponentid, f'{nickname} started a new game')
-		g = get_active_game(sender)
+		g = db.get_active_game(sender)
 		show_game_to_both(g)
 		return True
 	return False
