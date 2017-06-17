@@ -274,6 +274,13 @@ def handle_move(sender, message):
 		send_game_rep(sender, game, False)
 		send_message(opponentid, f'{nickname} played {message}')
 		send_game_rep(opponentid, game)
+	
+	if game.board.is_checkmate():
+		send_message(sender, f'Checkmate! {nickname} wins!')
+		send_message(opponentid, f'Checkmate! {nickname} wins!')
+	elif game.board.is_check():
+		send_message(sender, 'Check!')
+		send_message(opponentid, 'Check!')
 
 	# send_game_rep(game, )
 
@@ -555,5 +562,5 @@ if sys.flags.debug:
 		url = game.pgn_url()
 		print(f'Send pgn: {recipient} - {url}')
 
-if __name__ == '__main__': # and not sys.flags.debug:
+if __name__ == '__main__' and not sys.flags.debug:
 	app.run(host='0.0.0.0')
