@@ -12,10 +12,15 @@ import requests
 from urllib.parse import urlparse, quote_plus, unquote_plus
 import dbactions
 
-VERIFY_TOKEN = 'tobeornottobeerobot'
-PAGE_ACCESS_TOKEN = 'EAADbx7arRPQBANSbXpPFJStuljMm1ZCiiPmOA3UrG5FFkSDwffYiX3HgIVw4ZCaZAsAUsudTbIUP1ZCOTmpgajNKMMNjGB4rvqFgb0e2YMabSAv1kOvrxl0arVfqiqXKv2N2h1iu35AS95wiLxIQTx4zajbkjPzPXaeizc0rxwZDZD'
-# DATABASE_URL = os.environ['DATABASE_URL']
-DATABASE_URL = 'postgres://vjqgstovnxmxhf:627707772b1836a5b792c3087a1b56c401330158c24a3f3aead4ac64c0145727@ec2-184-73-236-170.compute-1.amazonaws.com:5432/ddnssqbrihnoje'
+try:
+	import env
+except ModuleNotFoundError:
+	# Heroku has us covered
+	pass
+
+VERIFY_TOKEN = os.environ['VERIFY_TOKEN']
+PAGE_ACCESS_TOKEN = os.environ['PAGE_ACCESS_TOKEN']
+DATABASE_URL = os.environ['DATABASE_URL']
 
 
 db = dbactions.DB()

@@ -1,3 +1,4 @@
 fbchessbotenv/
 python-chess/
 __pycache__/
+env.py
