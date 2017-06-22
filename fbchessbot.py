@@ -339,7 +339,7 @@ def handle_register(sender, message):
 		if len(nickname) > 32:
 			send_message(sender, 'That nickname is too long (Try 32 or less characters)')
 			return True
-		user_is_new = set_nickname(sender, nickname)
+		user_is_new = db.set_nickname(sender, nickname)
 		if user_is_new:
 			send_message(sender, f'Nice to meet you {nickname}!')
 		else:

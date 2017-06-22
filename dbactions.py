@@ -152,7 +152,7 @@ class DB:
 		with self.cursor() as cur:
 			# cur.execute('SELECT COUNT(*) FROM player WHERE id = %s', [playerid])
 			# user_exists = cur.fetchone()[0]
-			user_exists = user_is_registered(sender)
+			user_exists = self.user_is_registered(sender)
 			# if cur.fetchone():	# user already exists
 			print('user_exists', user_exists)
 			if user_exists:
