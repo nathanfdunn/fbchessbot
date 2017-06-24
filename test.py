@@ -34,20 +34,21 @@ def clear_mocks():
 fbchessbot.send_message = mock_send_message
 fbchessbot.send_game_rep = mock_send_game_rep
 fbchessbot.send_pgn = mock_send_pgn
-# dbactions = fbchessbot = psycopg2 = None
+
+_sentinel = object()
 
 class CustomAssertions:
-	def assertLastMessageEquals(self, recipient, text):
+	def assertLastMessageEquals(self, recipient, text, target_index=-1):
 		expected_response = recipient, text
 		if not sent_messages:
 			raise AssertionError(f'No recorded messages. Cannot match {expected_response!r}')
-		last_message = sent_messages[-1]
+		last_message = sent_messages[target_index]
 		# This only works because we're multiply inheriting from unittest.TestCase as well
 		self.assertEqual(last_message, expected_response)
-		# if last_message != expected_response:
-			# raise AssertionError(f'Message {last_message!r} != {expected_response!r}')
 
 class BaseTest(unittest.TestCase, CustomAssertions):
+	expected_replies = None
+
 	@classmethod
 	def setUpClass(cls):
 		cls.db = dbactions.DB()
@@ -59,23 +60,39 @@ class BaseTest(unittest.TestCase, CustomAssertions):
 	def tearDownClass(cls):
 		del cls.db
 
+	def handle_message(self, recipient, message, *, expected_replies=_sentinel):
+		"Utility method for player input. Accounts for possibility of unexpected replies"
+		if expected_replies is _sentinel:
+			expected_replies = self.expected_replies
+
+		num_messages_start = len(sent_messages)
+		fbchessbot.handle_message(recipient, message)
+		num_messages_finish = len(sent_messages)
+		actual_replies = num_messages_finish - num_messages_start
+		
+		if expected_replies is not None and actual_replies != expected_replies:
+			# print(sent_messages[-actual_replies:])
+			raise AssertionError(f'Expected {expected_replies} new messages, got {actual_replies}')
+
 
 class TestRegistration(BaseTest):
+	expected_replies = 1
+
 	def setUp(self):
 		self.db.delete_all()
 		clear_mocks()
 
 	def test_can_register(self):
 		with self.subTest(player='Nate'):
-			fbchessbot.handle_message(self.nate_id, 'My name is Nate')
+			self.handle_message(self.nate_id, 'My name is Nate')
 			self.assertLastMessageEquals(self.nate_id, 'Nice to meet you Nate!')
 
 		with self.subTest(player='Chad'):
-			fbchessbot.handle_message(self.chad_id, '   \n  MY   \n NamE is   \n CHaD  \n  ')
+			self.handle_message(self.chad_id, '   \n  MY   \n NamE is   \n CHaD  \n  ')
 			self.assertLastMessageEquals(self.chad_id, 'Nice to meet you CHaD!')
 
 		with self.subTest(player='Jess'):
-			fbchessbot.handle_message(self.jess_id, 'my name is jess')
+			self.handle_message(self.jess_id, 'my name is jess')
 			self.assertLastMessageEquals(self.jess_id, 'Nice to meet you jess!')
 
 		with self.subTest(total_players=3):
@@ -86,9 +103,9 @@ class TestRegistration(BaseTest):
 	# Coming soon!
 	@unittest.expectedFailure
 	def test_name_cant_collide_when_registering(self):
-		fbchessbot.handle_message(self.nate_id, 'My name is Nate')
+		self.handle_message(self.nate_id, 'My name is Nate')
 		with self.subTest():
-			fbchessbot.handle_message(self.chad_id, 'My name is Nate')
+			self.handle_message(self.chad_id, 'My name is Nate')
 			self.assertLastMessageEquals(self.chad_id, 'That name is taken. Please choose another')
 
 		with self.subTest():
@@ -97,7 +114,7 @@ class TestRegistration(BaseTest):
 				self.assertEqual(cur.fetchone()[0], 0)
 
 		with self.subTest():
-			fbchessbot.handle_message(self.jess_id, 'My name is nate')
+			self.handle_message(self.jess_id, 'My name is nate')
 			self.assertLastMessageEquals(self.jess_id, 'That name is taken. Please choose another')
 		
 		with self.subTest():
@@ -106,9 +123,9 @@ class TestRegistration(BaseTest):
 				self.assertEqual(cur.fetchone()[0], 0)
 
 	def test_can_rename(self):
-		fbchessbot.handle_message(self.nate_id, 'my name is Nate')
+		self.handle_message(self.nate_id, 'my name is Nate', expected_replies=None)
 		with self.subTest(case='first rename'):
-			fbchessbot.handle_message(self.nate_id, 'my name is jonathan')
+			self.handle_message(self.nate_id, 'my name is jonathan')
 			self.assertLastMessageEquals(self.nate_id, 'I set your nickname to jonathan')
 		
 		with self.subTest():
@@ -117,18 +134,18 @@ class TestRegistration(BaseTest):
 				self.assertEqual(cur.fetchone()[0], 'jonathan')
 
 		with self.subTest(case='second rename'):
-			fbchessbot.handle_message(self.nate_id, 'my name is jonathan')
+			self.handle_message(self.nate_id, 'my name is jonathan')
 			self.assertLastMessageEquals(self.nate_id, 'I set your nickname to jonathan')
 
 	# Coming soon!
 	@unittest.expectedFailure
 	def test_name_cant_collide_when_renaming(self):
-		fbchessbot.handle_message(self.nate_id, 'My name is Nate')
-		fbchessbot.handle_message(self.chad_id, 'My name is Chad')
-		fbchessbot.handle_message(self.jess_id, 'My name is Jess')
+		self.handle_message(self.nate_id, 'My name is Nate', expected_replies=None)
+		self.handle_message(self.chad_id, 'My name is Chad', expected_replies=None)
+		self.handle_message(self.jess_id, 'My name is Jess', expected_replies=None)
 
 		with self.subTest():
-			fbchessbot.handle_message(self.chad_id, 'My name is Nate')
+			self.handle_message(self.chad_id, 'My name is Nate')
 			self.assertLastMessageEquals(self.chad_id, 'That name is taken. Please choose another')
 
 		with self.subTest():
@@ -137,7 +154,7 @@ class TestRegistration(BaseTest):
 				self.assertNotEqual(cur.fetchone()[0].casefold(), 'Nate'.casefold())
 
 		with self.subTest():
-			fbchessbot.handle_message(self.jess_id, 'My name is nate')
+			self.handle_message(self.jess_id, 'My name is nate')
 			self.assertLastMessageEquals(self.jess_id, 'That name is taken. Please choose another')
 		
 		with self.subTest():
@@ -147,24 +164,36 @@ class TestRegistration(BaseTest):
 
 	def test_name_must_conform(self):
 		with self.subTest(nickname='special chars'):
-			fbchessbot.handle_message(self.nate_id, 'my name is @*#n923')
+			self.handle_message(self.nate_id, 'my name is @*#n923')
 			self.assertLastMessageEquals(self.nate_id, 'Nickname must match regex [a-z]+[0-9]*')
 
 		with self.subTest(nickname='too long'):
-			fbchessbot.handle_message(self.nate_id, 'my name is jerryfrandeskiemandersonfrancansolophenofocus')
+			self.handle_message(self.nate_id, 'my name is jerryfrandeskiemandersonfrancansolophenofocus')
 			self.assertLastMessageEquals(self.nate_id, 'That nickname is too long (Try 32 or less characters)')
 
 		with self.subTest(nickname='too long and special chars'):
-			fbchessbot.handle_message(self.nate_id, 'my name is jerryfrandeskiemandersonfrancansolophenofocus#')
+			self.handle_message(self.nate_id, 'my name is jerryfrandeskiemandersonfrancansolophenofocus#')
 			self.assertLastMessageEquals(self.nate_id, 'Nickname must match regex [a-z]+[0-9]*')
 
 
-# class TestOpponentContext(BaseTest):
-# 	def setUp(self):
-# 		self.db.delete_all()
-# 		fbchessbot.handle_message(self.nate_id, 'My name is Nate')
-# 		# fbchessbot.handle_message(self.)
-# 		clear_mocks()
+class TestOpponentContext(BaseTest):
+	expected_replies = 1
+
+	def setUp(self):
+		self.db.delete_all()
+		self.handle_message(self.nate_id, 'My name is Nate', expected_replies=None)
+		self.handle_message(self.chad_id, 'My name is Chad', expected_replies=None)
+		clear_mocks()
+
+	# def test_can_set_opponent_context(self):
+	# 	self.handle_message(self.nate_id, 'Play against chad')
+	# 	pass
+
+	# def test_cant_set_opponent_context_on_nonplayer(self):
+	# 	pass
+
+	# def test_can_switch_opponent_context(self):
+	# 	pass
 
 	# def test_can_
 
