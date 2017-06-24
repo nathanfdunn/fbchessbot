@@ -203,6 +203,14 @@ def dontcrash(func):
 			return 'ok'
 	return wrapper
 
+def notify(func):
+	@functools.wraps(func)
+	def wrapper(*args, **kwargs):
+		print('Entering', func.__name__)
+		ret = func(*args, **kwargs)
+		print('Matched' if ret else 'No match')
+		return ret
+	return wrapper
 # import datetime
 
 def handle_message(sender, message):
@@ -231,6 +239,7 @@ def messages():
 
 	return 'ok'
 
+@notify
 def handle_show(sender, message):
 	if re.match(r'^\s*show\s*$', message, re.IGNORECASE):
 		game = db.get_active_game(sender)
@@ -240,6 +249,7 @@ def handle_show(sender, message):
 		return True
 	return False
 
+@notify
 def handle_pgn(sender, message):
 	if re.match(r'^\s*pgn\s*$', message, re.IGNORECASE):
 		game = db.get_active_game(sender)
@@ -248,6 +258,7 @@ def handle_pgn(sender, message):
 	else:
 		return False
 
+@notify
 def handle_move(sender, message):
 	game = db.get_active_game(sender)
 	if not game:
@@ -291,6 +302,7 @@ def handle_move(sender, message):
 
 	pass
 
+@notify
 def handle_help(sender, message):
 	if re.match(r'^\s*help\s*$', message, re.IGNORECASE):
 		send_message(sender, 'Help text coming soon...')
@@ -298,6 +310,7 @@ def handle_help(sender, message):
 	else:
 		return False
 
+@notify
 def handle_undo(sender, message):
 	if not re.match(r'^\s*undo\s*$', message, re.IGNORECASE):
 		return False
@@ -331,6 +344,7 @@ def handle_undo(sender, message):
 # 		return bool(cur.fetchone()[0])
 
 
+@notify
 def handle_register(sender, message):
 	# send_message = lambda sender, message: print(f'Send message: {sender} - {message}')
 	m = re.match(r'^my\s+name\s+is\s+([a-z]+[0-9]*)\s*$', message, re.IGNORECASE)
@@ -415,6 +429,7 @@ shawnid = db.id_from_nickname('shawn')
 # 		cur.connection.commit()
 
 
+@notify
 def handle_play(sender, message):
 	playerid = int(sender)
 	m = re.match(r'^play\s+against\s+([a-z]+[0-9]*)$', message, re.IGNORECASE)
@@ -436,6 +451,7 @@ def handle_play(sender, message):
 
 	return True
 
+@notify
 def handle_new(sender, message):
 	# playerid = int(sender)
 	m = re.match(r'^new game (white|black)$', message, re.IGNORECASE)

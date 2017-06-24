@@ -60,17 +60,32 @@ class Game:
 
 class DB:
 	def __init__(self):
-		url = urlparse(DATABASE_URL)
-		self.conn = psycopg2.connect(
-			database=url.path[1:],
-			user=url.username,
-			password=url.password,
-			host=url.hostname,
-			port=url.port
-		)
+		try:
+			url = urlparse(DATABASE_URL)
+			self.conn = psycopg2.connect(
+				database=url.path[1:],
+				user=url.username,
+				password=url.password,
+				host=url.hostname,
+				port=url.port
+			)
+		except psycopg2.OperationalError:
+			# This happens when we're testing against
+			# our local postgres db (hack)
+			self.conn = psycopg2.connect(DATABASE_URL)
 
 	def __del__(self):
 		self.conn.close()
+
+	def delete_all(self):
+		with self.cursor() as cur:
+			cur.execute('''
+				DELETE FROM games
+				''')
+			cur.execute('''
+				DELETE FROM player
+				''')
+			cur.connection.commit()
 
 	def cursor(self):
 		return self.conn.cursor()
