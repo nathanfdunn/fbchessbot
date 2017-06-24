@@ -210,7 +210,9 @@ def notify(func):
 		ret = func(*args, **kwargs)
 		print('Matched' if ret else 'No match')
 		return ret
-	return wrapper
+	# return wrapper
+	return func
+
 # import datetime
 
 def handle_message(sender, message):
@@ -347,7 +349,7 @@ def handle_undo(sender, message):
 @notify
 def handle_register(sender, message):
 	# send_message = lambda sender, message: print(f'Send message: {sender} - {message}')
-	m = re.match(r'^my\s+name\s+is\s+([a-z]+[0-9]*)\s*$', message, re.IGNORECASE)
+	m = re.match(r'^\s*my\s+name\s+is\s+([a-z]+[0-9]*)\s*$', message, re.IGNORECASE)
 	if m:
 		nickname = m.groups()[0]
 		if len(nickname) > 32:
@@ -360,7 +362,7 @@ def handle_register(sender, message):
 			send_message(sender, f'I set your nickname to {nickname}')
 
 		return True
-	elif re.match(r'^my\s+name\s+is\s+', message, re.IGNORECASE):
+	elif re.match(r'^\s*my\s+name\s+is\s+', message, re.IGNORECASE):
 		send_message(sender, 'Nickname must match regex [a-z]+[0-9]*')
 		return True
 	else:

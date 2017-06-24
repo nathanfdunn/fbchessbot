@@ -1,10 +1,11 @@
 import sys
 if not sys.flags.debug:
 	raise Exception('Debug flag must be enabled')
-# import fbchessbot
+import fbchessbot
 # import dbtools
-# import dbactions
-# import psycopg2
+import dbactions
+import psycopg2
+
 import unittest
 
 # def remake_db():
@@ -30,53 +31,86 @@ def clear_mocks():
 	sent_game_reps = []
 	sent_pgns = []
 
-dbactions = fbchessbot = psycopg2 = None
+fbchessbot.send_message = mock_send_message
+fbchessbot.send_game_rep = mock_send_game_rep
+fbchessbot.send_pgn = mock_send_pgn
+# dbactions = fbchessbot = psycopg2 = None
 
-class TestRegistration(unittest.TestCase):
+class CustomAssertions:
+	def assertLastMessageEquals(self, recipient, text):
+		expected_response = recipient, text
+		if not sent_messages:
+			raise AssertionError(f'No recorded messages. Cannot match {expected_response!r}')
+		last_message = sent_messages[-1]
+		# This only works because we're multiply inheriting from unittest.TestCase as well
+		self.assertEqual(last_message, expected_response)
+		# if last_message != expected_response:
+			# raise AssertionError(f'Message {last_message!r} != {expected_response!r}')
+
+class BaseTest(unittest.TestCase, CustomAssertions):
 	@classmethod
 	def setUpClass(cls):
-		import dbactions as dba
-		import fbchessbot as fbcb
-		import psycopg2 as psy
-		global dbactions, fbchessbot, psycopg2
-		dbactions = dba
-		fbchessbot = fbcb
-		psycopg2 = psy
-
 		cls.db = dbactions.DB()
 		cls.nate_id = '32233848429'
 		cls.chad_id = '83727482939'
 		cls.jess_id = '47463849663'
-		# db.delete_all()
-		fbchessbot.send_message = mock_send_message
-		fbchessbot.send_game_rep = mock_send_game_rep
-		fbchessbot.send_pgn = mock_send_pgn
 
 	@classmethod
 	def tearDownClass(cls):
 		del cls.db
 
+
+class TestRegistration(BaseTest):
 	def setUp(self):
 		print('deleting all')
 		self.db.delete_all()
 		clear_mocks()
 
+
 	def test_can_register(self):
+		with self.subTest(player='Nate'):
+			fbchessbot.handle_message(self.nate_id, 'my name is Nate')
+			self.assertLastMessageEquals(self.nate_id, 'Nice to meet you Nate!')
+
+		with self.subTest(player='Chad'):
+			fbchessbot.handle_message(self.chad_id, '     MY    NamE is    CHaD    ')
+			self.assertLastMessageEquals(self.chad_id, 'Nice to meet you CHaD!')
+
+		with self.subTest(player='Jess'):
+			fbchessbot.handle_message(self.jess_id, 'my name is jess')
+			self.assertLastMessageEquals(self.jess_id, 'Nice to meet you jess!')
+
+		with self.subTest(total_players=3):
+			with self.db.cursor() as cur:
+				cur.execute('SELECT COUNT(*) FROM player')
+				self.assertEqual(cur.fetchone()[0], 3)
+
+
+	def test_can_rename(self):
 		fbchessbot.handle_message(self.nate_id, 'my name is Nate')
-		expected_response = self.nate_id, 'Nice to meet you Nate!'
-		self.assertEqual(sent_messages[-1], expected_response)
+		with self.subTest(case='first rename'):
+			fbchessbot.handle_message(self.nate_id, 'my name is jonathan')
+			self.assertLastMessageEquals(self.nate_id, 'I set your nickname to jonathan')
+		
+		with self.subTest(case='second rename'):
+			fbchessbot.handle_message(self.nate_id, 'my name is jonathan')
+			self.assertLastMessageEquals(self.nate_id, 'I set your nickname to jonathan')
 
-		fbchessbot.handle_message(self.chad_id, '     MY    NamE is    CHaD    ')
-		expected_response = self.chad_id, 'Nice to meet you CHaD!'
-		self.assertEqual(sent_messages[-1], expected_response)
 
-		fbchessbot.handle_message(self.jess_id, 'my name is jess')
-		expected_response = self.jess_id, 'Nice to meet you jess!'
-		self.assertEqual(sent_messages[-1], expected_response)
+	def test_name_must_conform(self):
+		with self.subTest(nickname='special chars'):
+			fbchessbot.handle_message(self.nate_id, 'my name is @*#n923')
+			self.assertLastMessageEquals(self.nate_id, 'Nickname must match regex [a-z]+[0-9]*')
 
-		with self.db.cursor() as cur:
-			cur.execute('SELECT COUNT(*) FROM player')
-			self.assertEqual(cur.fetchone()[0], 3)
+		with self.subTest(nickname='too long'):
+			fbchessbot.handle_message(self.nate_id, 'my name is jerryfrandeskiemandersonfrancansolophenofous')
+			self.assertLastMessageEquals(self.nate_id, 'That nickname is too long (Try 32 or less characters)')
+
+		with self.subTest(nickname='too long and special chars'):
+			fbchessbot.handle_message(self.nate_id, 'my name is jerryfrandeskiemandersonfrancansolophenofous#')
+			self.assertLastMessageEquals(self.nate_id, 'Nickname must match regex [a-z]+[0-9]*')
+
+		# with self.subTest(nickname)
 
 	# def test_can_self():
 	# 	pass
@@ -92,7 +126,7 @@ class TestRegistration(unittest.TestCase):
 
 # def main():
 	# set_up_total()
-	
+
 
 if __name__ == '__main__':
 	unittest.main()
