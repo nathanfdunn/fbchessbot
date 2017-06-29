@@ -280,16 +280,23 @@ class TestGameInitiation(BaseTest):
 		self.handle_message(self.nate_id, 'New game white', expected_replies=1)
 		self.assertLastMessageEquals(self.nate_id, 'You already have an active game with Jess')
 
-class TestUndo: #(BaseTest):
-	def test_undo_offer(self):
-		pass
-	def test_undo_accepted(self):
-		pass
-	def test_undo_rejected(self):
-		pass
 
-class TestGamePlay: #(BaseTest):
+class GamePlayTest(BaseTest):
+	def setUp(self):
+		self.db.delete_all()
+		self.handle_message(self.nate_id, 'My name is Nate', expected_replies=None)
+		self.handle_message(self.jess_id, 'My name is Jess', expected_replies=None)
+
+		self.handle_message(self.nate_id, 'Play against Jess', expected_replies=None)
+		self.handle_message(self.jess_id, 'Play against Nate', expected_replies=None)
+
+		self.handle_message(self.nate_id, 'New game white')
+		clear_mocks()
+
+class TestGamePlay(GamePlayTest):
 	def test_cannot_make_impossible_move(self):
+		self.handle_message(self.nate_id, 'e5', expected_replies=1)
+		self.assertLastMessageEquals(self.nate_id, '')
 		pass
 	def test_cannot_move_on_opponent_turn(self):
 		pass
@@ -301,6 +308,17 @@ class TestGamePlay: #(BaseTest):
 
 	def test_check(self):
 		pass
+
+
+class TestUndo: #(BaseTest):
+	def test_undo_offer(self):
+		pass
+	def test_undo_accepted(self):
+		pass
+	def test_undo_rejected(self):
+		pass
+
+
 
 class TestGameFinish: #(BaseTest):
 	def test_checkmate(self):
