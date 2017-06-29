@@ -208,7 +208,7 @@ class DB:
 	def set_opponent_context(self, challengerid, opponentid):
 		with self.cursor() as cur:
 			cur.execute('UPDATE player SET opponent_context = %s WHERE id = %s', [opponentid, challengerid])
-			cur.execute('UPDATE player SET opponent_context = %s WHERE id = %s', [challengerid, opponentid])
+			# cur.execute('UPDATE player SET opponent_context = %s WHERE id = %s', [challengerid, opponentid])
 			cur.connection.commit()
 	# def active_game(self, id):
 	# 	pass

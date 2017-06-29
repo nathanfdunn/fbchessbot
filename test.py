@@ -38,7 +38,7 @@ fbchessbot.send_pgn = mock_send_pgn
 _sentinel = object()
 
 class CustomAssertions:
-	def assertLastMessageEquals(self, recipient, text, target_index=-1):
+	def assertLastMessageEquals(self, recipient, text, *, target_index=-1):
 		expected_response = recipient, text
 		if not sent_messages:
 			raise AssertionError(f'No recorded messages. Cannot match {expected_response!r}')
@@ -55,6 +55,7 @@ class BaseTest(unittest.TestCase, CustomAssertions):
 		cls.nate_id = '32233848429'
 		cls.chad_id = '83727482939'
 		cls.jess_id = '47463849663'
+		cls.izzy_id = '28394578322'
 
 	@classmethod
 	def tearDownClass(cls):
@@ -175,7 +176,7 @@ class TestRegistration(BaseTest):
 			self.handle_message(self.nate_id, 'my name is jerryfrandeskiemandersonfrancansolophenofocus#')
 			self.assertLastMessageEquals(self.nate_id, 'Nickname must match regex [a-z]+[0-9]*')
 
-
+# Also need to check if there are already games active
 class TestOpponentContext(BaseTest):
 	expected_replies = 1
 
@@ -183,16 +184,38 @@ class TestOpponentContext(BaseTest):
 		self.db.delete_all()
 		self.handle_message(self.nate_id, 'My name is Nate', expected_replies=None)
 		self.handle_message(self.chad_id, 'My name is Chad', expected_replies=None)
+		self.handle_message(self.jess_id, 'My name is Jess', expected_replies=None)
+		self.handle_message(self.izzy_id, 'My name is Izzy', expected_replies=None)
+		# Just so we can be sure these two are playing each other
+		self.handle_message(self.izzy_id, 'Play against Jess', expected_replies=None)
+		self.handle_message(self.jess_id, 'Play against Izzy', expected_replies=None)
 		clear_mocks()
 
-	# def test_can_set_opponent_context(self):
-	# 	self.handle_message(self.nate_id, 'Play against chad')
-	# 	pass
+	def test_opponent_context_automatically_set_on_newbie(self):
+		self.handle_message(self.nate_id, 'Play against Chad', expected_replies=2)
+		self.assertLastMessageEquals(self.chad_id, 'You are now playing against Nate', target_index=-2)
+		self.assertLastMessageEquals(self.nate_id, 'You are now playing against Chad', target_index=-1)
 
-	# def test_cant_set_opponent_context_on_nonplayer(self):
-	# 	pass
+		# Yeah...still need to convert over to int ids
+		self.assertEqual(self.db.get_opponent_context(self.nate_id), int(self.chad_id))
+		self.assertEqual(self.db.get_opponent_context(self.chad_id), int(self.nate_id))
 
-	# def test_can_switch_opponent_context(self):
+	def test_opponent_context_not_set_automatically_on_other(self):
+		self.handle_message(self.nate_id, 'Play against Jess', expected_replies=1)
+		self.assertLastMessageEquals(self.nate_id, 'You are now playing against Jess')
+		self.assertEqual(self.db.get_opponent_context(self.nate_id), int(self.jess_id))
+		self.assertEqual(self.db.get_opponent_context(self.jess_id), int(self.izzy_id))
+
+	@unittest.expectedFailure
+	def test_notifies_on_redundant_context_setting(self):
+		self.handle_message(self.nate_id, 'Play against Chad', expected_replies=2)
+		self.handle_message(self.nate_id, 'Play against Chad', expected_replies=1)
+		self.assertLastMessageEquals(self.nate_id, 'You are already playing against Chad')
+
+	def test_cant_set_opponent_context_on_nonplayer(self):
+		self.handle_message(self.nate_id, 'Play against Dave', expected_replies=1)
+		self.assertLastMessageEquals(self.nate_id, "No player named 'Dave'")
+
 	# 	pass
 
 	# def test_can_

@@ -434,7 +434,7 @@ shawnid = db.id_from_nickname('shawn')
 @notify
 def handle_play(sender, message):
 	playerid = int(sender)
-	m = re.match(r'^play\s+against\s+([a-z]+[0-9]*)$', message, re.IGNORECASE)
+	m = re.match(r'^\s*play\s+against\s+([a-z]+[0-9]*)$', message, re.IGNORECASE)
 	if not m:
 		return False
 
