@@ -41,7 +41,9 @@ class Game:
 		fen = self.board.fen().split()[0]
 
 		if perspective == BLACK:
-			fen = '/'.join(line[::-1] for line in reversed(fen.split('/')))
+			# fen = '/'.join(line[::-1] for line in reversed(fen.split('/')))
+			# cool property of FEN
+			fen = fen[::-1]
 
 		fen = fen.replace('/', '-')
 		return f'https://fbchessbot.herokuapp.com/image/{fen}'

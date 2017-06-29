@@ -96,9 +96,9 @@ class BaseTest(unittest.TestCase, CustomAssertions):
 	def perform_moves(self, white_id, black_id, move_list, clear=True):
 		while move_list:
 			move_pair = move_list.pop(0)
-			self.handle_message(white_id, move_pair[0])
+			self.handle_message(white_id, move_pair[0], expected_replies=None)
 			if len(move_pair) > 1:
-				self.handle_message(black_id, move_pair[1])
+				self.handle_message(black_id, move_pair[1], expected_replies=None)
 		if clear:
 			clear_mocks()
 
@@ -294,20 +294,53 @@ class GamePlayTest(BaseTest):
 		clear_mocks()
 
 class TestGamePlay(GamePlayTest):
+	def test_basic_moves(self):
+		self.handle_message(self.nate_id, 'e4', expected_replies=3)
+		self.assertLastMessageEquals(self.jess_id, 'Nate played e4')
+		self.assertLastGameRepEquals(self.nate_id, 'rnbqkbnr-pppppppp-8-8-4P3-8-PPPP1PPP-RNBQKBNR', target_index=-2)
+		self.assertLastGameRepEquals(self.jess_id, 'RNBKQBNR-PPP1PPPP-8-3P4-8-8-pppppppp-rnbkqbnr', target_index=-1)
+
+		self.handle_message(self.jess_id, 'e5', expected_replies=3)
+		self.assertLastMessageEquals(self.nate_id, 'Jess played e5')
+		# Now note the target_index's - handle_move doesn't use show_to_both
+		self.assertLastGameRepEquals(self.nate_id, 'rnbqkbnr-pppp1ppp-8-4p3-4P3-8-PPPP1PPP-RNBQKBNR', target_index=-1)
+		self.assertLastGameRepEquals(self.jess_id, 'RNBKQBNR-PPP1PPPP-8-3P4-3p4-8-ppp1pppp-rnbkqbnr', target_index=-2)
+
+		self.handle_message(self.nate_id, 'Nf3', expected_replies=3)
+		self.assertLastMessageEquals(self.jess_id, 'Nate played Nf3')
+		self.assertLastGameRepEquals(self.nate_id, 'rnbqkbnr-pppp1ppp-8-4p3-4P3-5N2-PPPP1PPP-RNBQKB1R', target_index=-2)
+		self.assertLastGameRepEquals(self.jess_id, 'R1BKQBNR-PPP1PPPP-2N5-3P4-3p4-8-ppp1pppp-rnbkqbnr', target_index=-1)
+
 	def test_cannot_make_impossible_move(self):
 		self.handle_message(self.nate_id, 'e5', expected_replies=1)
-		self.assertLastMessageEquals(self.nate_id, '')
-		pass
-	def test_cannot_move_on_opponent_turn(self):
-		pass
-	def test_cannot_make_ambiguous_move(self):
-		pass
+		self.assertLastMessageEquals(self.nate_id, 'That is an invalid move')
 
-	def test_basic_moves(self):
-		pass
+		self.handle_message(self.nate_id, 'Ke2', expected_replies=1)
+		self.assertLastMessageEquals(self.nate_id, 'That is an invalid move')
+
+		self.handle_message(self.nate_id, 'e4', expected_replies=None)
+		self.handle_message(self.jess_id, 'e7', expected_replies=1)
+		self.assertLastMessageEquals(self.jess_id, 'That is an invalid move')
+
+	def test_cannot_move_on_opponent_turn(self):
+		self.handle_message(self.jess_id, 'e5', expected_replies=1)
+		self.assertLastMessageEquals(self.jess_id, "It isn't your turn")
+
+	def test_cannot_make_ambiguous_move(self):
+		self.perform_moves(self.nate_id, self.jess_id, [('e4', 'f5'), ('c4', 'd5')])
+		self.handle_message(self.nate_id, 'd5', expected_replies=1)
+		self.assertLastMessageEquals(self.nate_id, 'That is an invalid move')
+
+	@unittest.expectedFailure
+	def test_cannot_make_ambiguous_moveII(self):
+		self.perform_moves(self.nate_id, self.jess_id, [('e4', 'f5'), ('c4', 'd5')])
+		self.handle_message(self.nate_id, 'd5', expected_replies=1)
+		self.assertLastMessageEquals(self.nate_id, 'That move could refer to two or more pieces')
 
 	def test_check(self):
-		pass
+		self.perform_moves(self.nate_id, self.jess_id, [('e4', 'f5')])
+		self.handle_message(self.nate_id, 'Qh5', expected_replies=5)
+		
 
 
 class TestUndo: #(BaseTest):
