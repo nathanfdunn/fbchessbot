@@ -414,6 +414,17 @@ class TestUndo(GamePlayTest):
 	def test_cannot_undo_without_active_game(self):
 		self.handle_message(self.izzy_id, 'undo', expected_replies=1)
 		self.assertLastMessageEquals(self.izzy_id, 'You have no active games')
+		
+		self.handle_message(self.izzy_id, 'Play against Chad', expected_replies=None)
+		self.handle_message(self.izzy_id, 'undo', expected_replies=1)
+		self.assertLastMessageEquals(self.izzy_id, 'You have no active games')
+
+	@unittest.expectedFailure
+	def test_cannot_undo_without_active_gameII(self):
+		self.handle_message(self.izzy_id, 'Play against Chad', expected_replies=None)
+		self.handle_message(self.izzy_id, 'undo', expected_replies=1)
+		self.assertLastMessageEquals(self.izzy_id, 'You have no active games with Chad')
+
 
 class TestGameFinish(GamePlayTest):
 	def test_checkmate(self):
@@ -443,9 +454,13 @@ class TestGameFinish(GamePlayTest):
 	def test_draw(self):
 		pass
 
-class TestMiscellaneous: #(BaseTest):
+@unittest.skip
+class TestMiscellaneous(BaseTest):
 	def test_show(self):
-		pass
+		with self.subTest('Without game'):
+			pass
+		with self.subTest('With game'):
+			pass
 
 	def test_help(self):
 		pass
