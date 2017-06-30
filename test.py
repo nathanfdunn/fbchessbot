@@ -5,7 +5,7 @@ import fbchessbot
 # import dbtools
 import dbactions
 import psycopg2
-
+from collections import defaultdict
 import unittest
 
 # def remake_db():
@@ -13,23 +13,26 @@ import unittest
 # 	dbtools.apply_all_migrations()
 
 # Must be run with debug flag
-sent_messages = []
+sent_messages = defaultdict(list)
 def mock_send_message(recipient, text):
-	sent_messages.append((recipient, text))
+	recipient = str(recipient)
+	sent_messages[recipient].append(text)
 
-sent_game_reps = []
+sent_game_reps = defaultdict(list)
 def mock_send_game_rep(recipient, game, perspective=True):
-	sent_game_reps.append((recipient, game.image_url(perspective)))
+	recipient = str(recipient)
+	sent_game_reps[recipient].append(game.image_url(perspective))
 
-sent_pgns = []
+sent_pgns = defaultdict(list)
 def mock_send_pgn(recipient, game):
-	sent_pgns.append((recipient, game.pgn_url()))
+	recipient = str(recipient)
+	sent_pgns[recipient].append(game.pgn_url())
 
 def clear_mocks():
 	global sent_messages, sent_game_reps, sent_pgns
-	sent_messages = []
-	sent_game_reps = []
-	sent_pgns = []
+	sent_messages = defaultdict(list)
+	sent_game_reps = defaultdict(list)
+	sent_pgns = defaultdict(list)
 
 fbchessbot.send_message = mock_send_message
 fbchessbot.send_game_rep = mock_send_game_rep
@@ -39,29 +42,23 @@ _sentinel = object()
 
 class CustomAssertions:
 	def assertLastMessageEquals(self, recipient, text, *, target_index=-1):
-		expected_response = str(recipient), text
-		if not sent_messages:
-			raise AssertionError(f'No recorded messages. Cannot match {expected_response!r}')
-		last_message = sent_messages[target_index]
-		last_message = str(last_message[0]), last_message[1]
+		recipient = str(recipient)
+		messages = sent_messages[recipient]
+		if not messages:
+			raise AssertionError(f'No messages for {recipient}. Some for {[recipient for recipient in sent_messages if sent_messages[recipient]]}')
+		last_message = messages[target_index]
 		# This only works because we're multiply inheriting from unittest.TestCase as well
-		self.assertEqual(last_message, expected_response)
-		# Belt and suspenders...
-		self.assertNotEqual(expected_response[0], 'None')
-		self.assertNotEqual(last_message[0], 'None')
+		self.assertEqual(last_message, text)
 
 	def assertLastGameRepEquals(self, recipient, rep_url, *, target_index=-1):
+		recipient = str(recipient)
 		rep_url = 'https://fbchessbot.herokuapp.com/image/' + rep_url
-		expected_rep = str(recipient), rep_url
-		if not sent_game_reps:
-			raise AssertionError(f'No recorded game reps. Cannot match {expected_response!r}')
-		last_rep = sent_game_reps[target_index]
-		last_rep = str(last_rep[0]), last_rep[1]
+		reps = sent_game_reps[recipient]
+		if not reps:
+			raise AssertionError(f'No game reps for {recipient}. Some for {[recipient for recipient in sent_game_reps if sent_game_reps[recipient]]}')
+		last_rep = reps[target_index]
 		# This only works because we're multiply inheriting from unittest.TestCase as well
-		self.assertEqual(last_rep, expected_rep)
-		# Belt and suspenders...
-		self.assertNotEqual(expected_rep[0], 'None')
-		self.assertNotEqual(last_rep[0], 'None')
+		self.assertEqual(last_rep, rep_url)
 
 
 class BaseTest(unittest.TestCase, CustomAssertions):
@@ -84,9 +81,14 @@ class BaseTest(unittest.TestCase, CustomAssertions):
 		if expected_replies is _sentinel:
 			expected_replies = self.expected_replies
 
-		num_replies_start = len(sent_messages) + len(sent_game_reps) + len(sent_pgns)
+		num_replies_start = sum(len(messages) for messages in sent_messages.values()) + \
+							sum(len(games) for games in sent_game_reps.values()) + \
+							sum(len(pgns) for pgns in sent_pgns.values())
+
 		fbchessbot.handle_message(recipient, message)
-		num_replies_finish = len(sent_messages) + len(sent_game_reps) + len(sent_pgns)
+		num_replies_finish = sum(len(messages) for messages in sent_messages.values()) + \
+							sum(len(games) for games in sent_game_reps.values()) + \
+							sum(len(pgns) for pgns in sent_pgns.values())
 		actual_replies = num_replies_finish - num_replies_start
 		
 		if expected_replies is not None and actual_replies != expected_replies:
@@ -219,8 +221,8 @@ class TestOpponentContext(BaseTest):
 
 	def test_opponent_context_automatically_set_on_newbie(self):
 		self.handle_message(self.nate_id, 'Play against Chad', expected_replies=2)
-		self.assertLastMessageEquals(self.chad_id, 'You are now playing against Nate', target_index=-2)
-		self.assertLastMessageEquals(self.nate_id, 'You are now playing against Chad', target_index=-1)
+		self.assertLastMessageEquals(self.chad_id, 'You are now playing against Nate')
+		self.assertLastMessageEquals(self.nate_id, 'You are now playing against Chad')
 
 		# Yeah...still need to convert over to int ids
 		self.assertEqual(self.db.get_opponent_context(self.nate_id), int(self.chad_id))
@@ -262,16 +264,16 @@ class TestGameInitiation(BaseTest):
 
 	def test_can_start_new_game_as_white(self):
 		self.handle_message(self.nate_id, 'New game white', expected_replies=3)
-		self.assertLastGameRepEquals(self.nate_id, 'rnbqkbnr-pppppppp-8-8-8-8-PPPPPPPP-RNBQKBNR', target_index=-2)
+		self.assertLastGameRepEquals(self.nate_id, 'rnbqkbnr-pppppppp-8-8-8-8-PPPPPPPP-RNBQKBNR')
 		self.assertLastMessageEquals(self.jess_id, 'Nate started a new game')
-		self.assertLastGameRepEquals(self.jess_id, 'RNBKQBNR-PPPPPPPP-8-8-8-8-pppppppp-rnbkqbnr', target_index=-1)
+		self.assertLastGameRepEquals(self.jess_id, 'RNBKQBNR-PPPPPPPP-8-8-8-8-pppppppp-rnbkqbnr')
 
 	def test_can_start_new_game_as_black(self):
 		self.handle_message(self.nate_id, 'New game black', expected_replies=3)
 		# Note the order of the target_index's of these two. show_to_both sends to white first. Huh.
-		self.assertLastGameRepEquals(self.nate_id, 'RNBKQBNR-PPPPPPPP-8-8-8-8-pppppppp-rnbkqbnr', target_index=-1)
+		self.assertLastGameRepEquals(self.nate_id, 'RNBKQBNR-PPPPPPPP-8-8-8-8-pppppppp-rnbkqbnr')
 		self.assertLastMessageEquals(self.jess_id, 'Nate started a new game')
-		self.assertLastGameRepEquals(self.jess_id, 'rnbqkbnr-pppppppp-8-8-8-8-PPPPPPPP-RNBQKBNR', target_index=-2)
+		self.assertLastGameRepEquals(self.jess_id, 'rnbqkbnr-pppppppp-8-8-8-8-PPPPPPPP-RNBQKBNR')
 
 	@unittest.expectedFailure
 	def test_cannot_start_new_in_middle_of_game(self):
@@ -297,19 +299,19 @@ class TestGamePlay(GamePlayTest):
 	def test_basic_moves(self):
 		self.handle_message(self.nate_id, 'e4', expected_replies=3)
 		self.assertLastMessageEquals(self.jess_id, 'Nate played e4')
-		self.assertLastGameRepEquals(self.nate_id, 'rnbqkbnr-pppppppp-8-8-4P3-8-PPPP1PPP-RNBQKBNR', target_index=-2)
-		self.assertLastGameRepEquals(self.jess_id, 'RNBKQBNR-PPP1PPPP-8-3P4-8-8-pppppppp-rnbkqbnr', target_index=-1)
+		self.assertLastGameRepEquals(self.nate_id, 'rnbqkbnr-pppppppp-8-8-4P3-8-PPPP1PPP-RNBQKBNR')
+		self.assertLastGameRepEquals(self.jess_id, 'RNBKQBNR-PPP1PPPP-8-3P4-8-8-pppppppp-rnbkqbnr')
 
 		self.handle_message(self.jess_id, 'e5', expected_replies=3)
 		self.assertLastMessageEquals(self.nate_id, 'Jess played e5')
 		# Now note the target_index's - handle_move doesn't use show_to_both
-		self.assertLastGameRepEquals(self.nate_id, 'rnbqkbnr-pppp1ppp-8-4p3-4P3-8-PPPP1PPP-RNBQKBNR', target_index=-1)
-		self.assertLastGameRepEquals(self.jess_id, 'RNBKQBNR-PPP1PPPP-8-3P4-3p4-8-ppp1pppp-rnbkqbnr', target_index=-2)
+		self.assertLastGameRepEquals(self.nate_id, 'rnbqkbnr-pppp1ppp-8-4p3-4P3-8-PPPP1PPP-RNBQKBNR')
+		self.assertLastGameRepEquals(self.jess_id, 'RNBKQBNR-PPP1PPPP-8-3P4-3p4-8-ppp1pppp-rnbkqbnr')
 
 		self.handle_message(self.nate_id, 'Nf3', expected_replies=3)
 		self.assertLastMessageEquals(self.jess_id, 'Nate played Nf3')
-		self.assertLastGameRepEquals(self.nate_id, 'rnbqkbnr-pppp1ppp-8-4p3-4P3-5N2-PPPP1PPP-RNBQKB1R', target_index=-2)
-		self.assertLastGameRepEquals(self.jess_id, 'R1BKQBNR-PPP1PPPP-2N5-3P4-3p4-8-ppp1pppp-rnbkqbnr', target_index=-1)
+		self.assertLastGameRepEquals(self.nate_id, 'rnbqkbnr-pppp1ppp-8-4p3-4P3-5N2-PPPP1PPP-RNBQKB1R')
+		self.assertLastGameRepEquals(self.jess_id, 'R1BKQBNR-PPP1PPPP-2N5-3P4-3p4-8-ppp1pppp-rnbkqbnr')
 
 	def test_cannot_make_impossible_move(self):
 		self.handle_message(self.nate_id, 'e5', expected_replies=1)
@@ -331,6 +333,12 @@ class TestGamePlay(GamePlayTest):
 		self.handle_message(self.nate_id, 'd5', expected_replies=1)
 		self.assertLastMessageEquals(self.nate_id, 'That is an invalid move')
 
+	def test_can_qualify_ambiguous_move(self):
+		pass
+
+	def test_can_qualify_unambiguous_move(self):
+		pass
+
 	@unittest.expectedFailure
 	def test_cannot_make_ambiguous_moveII(self):
 		self.perform_moves(self.nate_id, self.jess_id, [('e4', 'f5'), ('c4', 'd5')])
@@ -340,7 +348,7 @@ class TestGamePlay(GamePlayTest):
 	def test_check(self):
 		self.perform_moves(self.nate_id, self.jess_id, [('e4', 'f5')])
 		self.handle_message(self.nate_id, 'Qh5', expected_replies=5)
-		
+
 
 
 class TestUndo: #(BaseTest):
