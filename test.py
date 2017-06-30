@@ -339,6 +339,15 @@ class TestGamePlay(GamePlayTest):
 	def test_can_qualify_unambiguous_move(self):
 		pass
 
+	def test_can_make_case_insensitive_pawn_move(self):
+		pass
+
+	def test_can_promote(self):
+		pass
+
+	def test_can_castle(self):
+		pass
+
 	@unittest.expectedFailure
 	def test_cannot_make_ambiguous_moveII(self):
 		self.perform_moves(self.nate_id, self.jess_id, [('e4', 'f5'), ('c4', 'd5')])
@@ -347,27 +356,90 @@ class TestGamePlay(GamePlayTest):
 
 	def test_check(self):
 		self.perform_moves(self.nate_id, self.jess_id, [('e4', 'f5')])
+		clear_mocks()
 		self.handle_message(self.nate_id, 'Qh5', expected_replies=5)
+		self.assertLastMessageEquals(self.jess_id, 'Nate played Qh5', target_index=-2)
+		self.assertLastMessageEquals(self.jess_id, 'Check!', target_index=-1)
+		self.assertLastMessageEquals(self.nate_id, 'Check!')
 
+class TestUndo(GamePlayTest):
+	def test_undo(self):
+		with self.subTest('can offer'):
+			self.handle_message(self.nate_id, 'e4', expected_replies=None)
+			with self.db.cursor() as cur:
+				cur.execute('SELECT undo FROM games')
+				self.assertEqual(cur.fetchone()[0], False)
+			clear_mocks()
+			self.handle_message(self.nate_id, 'undo', expected_replies=1)
+			with self.db.cursor() as cur:
+				cur.execute('SELECT undo FROM games')
+				self.assertEqual(cur.fetchone()[0], True)
+			self.assertLastMessageEquals(self.jess_id, 'Nate has requested an undo')
 
+		with self.subTest('can accept'):
+			self.handle_message(self.jess_id, 'undo', expected_replies=3)
+			self.assertLastMessageEquals(self.nate_id, 'Jess accepted your undo request')
+			self.assertLastGameRepEquals(self.nate_id, 'rnbqkbnr-pppppppp-8-8-8-8-PPPPPPPP-RNBQKBNR')
+			self.assertLastGameRepEquals(self.jess_id, 'RNBKQBNR-PPPPPPPP-8-8-8-8-pppppppp-rnbkqbnr')
+			with self.db.cursor() as cur:
+				cur.execute('SELECT undo FROM games')
+				self.assertEqual(cur.fetchone()[0], False)
 
-class TestUndo: #(BaseTest):
-	def test_undo_offer(self):
-		pass
-	def test_undo_accepted(self):
-		pass
 	def test_undo_rejected(self):
-		pass
+		self.handle_message(self.nate_id, 'e4', expected_replies=None)
+		self.handle_message(self.nate_id, 'undo', expected_replies=None)
+		clear_mocks()
+		self.handle_message(self.jess_id, 'e5', expected_replies=3)
+		with self.db.cursor() as cur:
+			cur.execute('SELECT undo FROM games')
+			self.assertEqual(cur.fetchone()[0], False)
 
+	@unittest.expectedFailure
+	def test_cannot_undo_on_your_turn(self):
+		self.handle_message(self.nate_id, 'e4', expected_replies=None)
+		self.handle_message(self.jess_id, 'undo', expected_replies=1)
+		self.assertLastMessageEquals(self.jess_id, "You can't request an undo when it is your turn")
+		with self.db.cursor() as cur:
+			cur.execute('SELECT undo FROM games')
+			self.assertEqual(cur.fetchone()[0], False)
 
+	@unittest.expectedFailure
+	def test_cannot_undo_before_first_move(self):
+		self.handle_message(self.jess_id, 'undo', expected_replies=1)
+		self.assertLastMessageEquals(self.jess_id, "You haven't made any moves to undo")
+		with self.db.cursor() as cur:
+			cur.execute('SELECT undo FROM games')
+			self.assertEqual(cur.fetchone()[0], False)
 
-class TestGameFinish: #(BaseTest):
+	def test_cannot_undo_without_active_game(self):
+		self.handle_message(self.izzy_id, 'undo', expected_replies=1)
+		self.assertLastMessageEquals(self.izzy_id, 'You have no active games')
+
+class TestGameFinish(GamePlayTest):
 	def test_checkmate(self):
-		pass
+		self.perform_moves(self.nate_id, self.jess_id, [('f4', 'e5'), ('g4',)] )
+		self.handle_message(self.jess_id, 'Qh4', expected_replies=5)
+		self.assertLastMessageEquals(self.jess_id, 'Checkmate! Jess wins!')
+		self.assertLastMessageEquals(self.nate_id, 'Jess played Qh4', target_index=-2)
+		self.assertLastMessageEquals(self.nate_id, 'Checkmate! Jess wins!', target_index=-1)
 
+	@unittest.expectedFailure
+	def test_checkmate_ends_game(self):
+		self.perform_moves(self.nate_id, self.jess_id, [('f4', 'e5'), ('g4', 'Qh4')] )
+		with self.db.cursor() as cur:
+			cur.execute('SELECT active FROM games')
+			self.assertEqual(cur.fetchone()[0], False)
+
+	@unittest.expectedFailure
 	def test_resign(self):
-		pass
+		self.handle_message(self.nate_id, 'resign', expected_replies=2)
+		self.assertLastMessageEquals(self.nate_id, 'Nate has resigned. Jess wins!')
+		self.assertLastMessageEquals(self.jess_id, 'Nate has resigned. Jess wins!')
+		with self.db.cursor() as cur:
+			cur.execute('SELECT active FROM games')
+			self.assertEqual(cur.fetchone()[0], False)
 
+	@unittest.skip
 	def test_draw(self):
 		pass
 
