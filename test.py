@@ -1,18 +1,15 @@
 import sys
 if not sys.flags.debug:
 	raise Exception('Debug flag must be enabled')
-import fbchessbot
-# import dbtools
-import dbactions
-import psycopg2
+
 from collections import defaultdict
 import unittest
 
-# def remake_db():
-# 	dbtools.conn = psycopg2.connect("dbname='fbchessbottest' user='nathandunn' host='localhost' password=''")
-# 	dbtools.apply_all_migrations()
+import psycopg2
 
-# Must be run with debug flag
+import dbactions
+import fbchessbot
+
 sent_messages = defaultdict(list)
 def mock_send_message(recipient, text):
 	recipient = str(recipient)
@@ -59,7 +56,6 @@ class CustomAssertions:
 		last_rep = reps[target_index]
 		# This only works because we're multiply inheriting from unittest.TestCase as well
 		self.assertEqual(last_rep, rep_url)
-
 
 class BaseTest(unittest.TestCase, CustomAssertions):
 	expected_replies = None
