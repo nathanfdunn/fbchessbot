@@ -3,3 +3,4 @@ python-chess/
 __pycache__/
 env.py
 postgres/
+.idea/
