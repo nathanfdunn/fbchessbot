@@ -1,9 +1,10 @@
-import chess
 import collections
 import os
 import pickle
-import psycopg2
 from urllib.parse import urlparse
+
+import chess
+import psycopg2
 
 try:
 	import env
@@ -40,7 +41,7 @@ class Game:
 	def display(self):
 		print(self.board)
 
-		# Technically it's just the board that's serialized
+	# Technically it's just the board that's serialized
 	def serialized(self):
 		return pickle.dumps(self.board)
 
@@ -49,13 +50,10 @@ class Game:
 		fen = self.board.fen().split()[0]
 
 		if perspective == BLACK:
-			# fen = '/'.join(line[::-1] for line in reversed(fen.split('/')))
-			# cool property of FEN
 			fen = fen[::-1]
 
 		fen = fen.replace('/', '-')
 		return f'https://fbchessbot.herokuapp.com/image/{fen}'
-		# return 'https://fbchessbot.herokuapp.com/image?fen=' + quote_plus(fen)
 
 	def pgn_url(self):
 		return f'https://fbchessbot.herokuapp.com/pgn/{self.id}.pgn'
@@ -66,7 +64,6 @@ class Game:
 			return playerid == self.white
 		else:
 			return playerid == self.black
-
 
 class DB:
 	def __init__(self):

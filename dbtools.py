@@ -1,6 +1,7 @@
 import os
-import psycopg2
 from urllib.parse import urlparse
+
+import psycopg2
 
 try:
 	import env
