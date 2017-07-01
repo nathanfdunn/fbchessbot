@@ -520,3 +520,18 @@ class TestMiscellaneous(BaseTest):
 
 if __name__ == '__main__':
 	unittest.main()
+
+if False:
+	self = BaseTest()
+	self.setUpClass()
+	self.handle_message(self.nate_id, 'My name is Nate', expected_replies=None)
+	self.handle_message(self.chad_id, 'My name is Chad', expected_replies=None)
+	self.handle_message(self.jess_id, 'My name is Jess', expected_replies=None)
+	self.handle_message(self.izzy_id, 'My name is Izzy', expected_replies=None)
+	# Just so we can be sure these two are playing each other
+	self.handle_message(self.izzy_id, 'Play against Jess', expected_replies=None)
+	self.handle_message(self.jess_id, 'Play against Izzy', expected_replies=None)
+	self.handle_message(self.izzy_id, 'new game white')
+	self.handle_message(self.izzy_id, 'new game black')
+	self.handle_message(self.izzy_id, 'new game white')
+	self.handle_message(self.izzy_id, 'new game black')

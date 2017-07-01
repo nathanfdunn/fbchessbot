@@ -14,29 +14,37 @@ except ModuleNotFoundError:
 
 DATABASE_URL = os.environ['DATABASE_URL']
 
-Player = collections.namedtuple('Player', 'id name opponent')
+Player = collections.namedtuple('Player', 'id nickname opponentid')
 
 class Game:
-	def __init__(self, data_row = None):
-		if data_row is None:
-			self.id = None
-			self.active = False
-			self.board = chess.Board()
-			self.white = None
-			self.black = None
-			self.undo = False
-			self.outcome = None
-		else:
-			(self.id, 
-			raw_board,
-			self.active,
-			self.white,
-			self.black,
-			self.undo,
-			self.outcome) = data_row
+	def __init__(self, id, raw_board, active, whiteplayer, blackplayer, undo, outcome):
+		self.id = id
+		self.board = pickle.loads(bytes(raw_board))
+		self.active = active
+		self.whiteplayer = whiteplayer
+		self.blackplayer = blackplayer
+		self.undo = undo
+		self.outcome = outcome
 
-			self.white, self.black = str(self.white), str(self.black)
-			self.board = pickle.loads(bytes(raw_board))
+		# if data_row is None:
+		# 	self.id = None
+		# 	self.active = False
+		# 	self.board = chess.Board()
+		# 	self.white = None
+		# 	self.black = None
+		# 	self.undo = False
+		# 	self.outcome = None
+		# else:
+		# 	(self.id, 
+		# 	raw_board,
+		# 	self.active,
+		# 	self.white,
+		# 	self.black,
+		# 	self.undo,
+		# 	self.outcome) = data_row
+
+		# 	self.white, self.black = str(self.white), str(self.black)
+		# 	self.board = pickle.loads(bytes(raw_board))
 
 	def display(self):
 		print(self.board)
@@ -138,21 +146,54 @@ class DB:
 				""", [new_game.serialized(), whiteplayer, blackplayer])
 			cur.connection.commit()
 
-	def get_active_game(self, sender):
+	def get_active_gameII(self, playerid):
 		with self.cursor() as cur:
-			cur.execute("SELECT opponent_context FROM player WHERE id = %s", [sender])
+			cur.execute("""
+				SELECT
+					p.id, p.nickname, p.opponent_context,
+					o.id, o.nickname, o.opponent_context,
+					g.id, g.board, g.active, g.whiteplayer, g.blackplayer, g.undo, g.outcome
+				FROM player p
+				INNER JOIN player o ON p.opponent_context = o.id
+				INNER JOIN games g ON g.blackplayer = p.id OR g.whiteplayer = p.id
+				WHERE p.id = %s
+					AND g.active = TRUE
+					AND (
+						(g.whiteplayer = p.id AND g.blackplayer = o.id)
+						OR
+						(g.whiteplayer = o.id AND g.blackplayer = p.id)
+					)
+				""", [playerid])
+			row = cur.fetchone()			# should be the only one
+			if row is None:
+				return None
+
+			player = Player(row[0], row[1], row[2])
+			opponent = Player(row[3], row[4], row[5])
+			if row[9] == playerid:			# if g.whiteplayer == playerid
+				whiteplayer = player
+				blackplayer = opponent
+			else:
+				whiteplayer = opponent
+				blackplayer = player
+
+			return Game(row[6], row[7], row[8], whiteplayer, blackplayer, row[11], row[12])
+
+	def get_active_game(self, playerid):
+		with self.cursor() as cur:
+			cur.execute("SELECT opponent_context FROM player WHERE id = %s", [playerid])
 			opponentid = cur.fetchone()
 			if opponentid:
 				opponentid = opponentid[0]
 				cur.execute("""
 					SELECT id, board, active, whiteplayer, blackplayer, undo, outcome
-					FROM games WHERE 
+					FROM games WHERE
 					active = TRUE AND (
 						(whiteplayer = %s AND blackplayer = %s)
 						OR
 						(blackplayer = %s AND whiteplayer = %s)
 					)
-					""", [sender, opponentid, sender, opponentid])
+					""", [playerid, opponentid, playerid, opponentid])
 				# For now we don't want to impact the game if there is something wrong
 				# assert cur.rowcount <= 1
 				result = cur.fetchone()
