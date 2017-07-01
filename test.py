@@ -429,26 +429,48 @@ class TestUndo(GamePlayTest):
 class TestGameFinish(GamePlayTest):
 	def test_checkmate(self):
 		self.perform_moves(self.nate_id, self.jess_id, [('f4', 'e5'), ('g4',)] )
-		self.handle_message(self.jess_id, 'Qh4', expected_replies=5)
-		self.assertLastMessageEquals(self.jess_id, 'Checkmate! Jess wins!')
-		self.assertLastMessageEquals(self.nate_id, 'Jess played Qh4', target_index=-2)
-		self.assertLastMessageEquals(self.nate_id, 'Checkmate! Jess wins!', target_index=-1)
+		with self.subTest('Player communication'):
+			self.handle_message(self.jess_id, 'Qh4', expected_replies=5)
+			self.assertLastMessageEquals(self.jess_id, 'Checkmate! Jess wins!')
+			self.assertLastMessageEquals(self.nate_id, 'Jess played Qh4', target_index=-2)
+			self.assertLastMessageEquals(self.nate_id, 'Checkmate! Jess wins!', target_index=-1)
 
-	@unittest.expectedFailure
-	def test_checkmate_ends_game(self):
-		self.perform_moves(self.nate_id, self.jess_id, [('f4', 'e5'), ('g4', 'Qh4')] )
-		with self.db.cursor() as cur:
-			cur.execute('SELECT active FROM games')
-			self.assertEqual(cur.fetchone()[0], False)
+		with self.subTest('Outcome is set'):
+			with self.db.cursor() as cur:
+				cur.execute('SELECT outcome FROM games')
+				self.assertEqual(cur.fetchone()[0], fbchessbot.BLACK_WINS)
 
-	@unittest.expectedFailure
+		with self.subTest('Game is inactive'):
+			with self.db.cursor() as cur:
+				cur.execute('SELECT active FROM games')
+				self.assertEqual(cur.fetchone()[0], False)
+
+	# # @unittest.expectedFailure
+	# def test_checkmate_ends_game(self):
+	# 	self.perform_moves(self.nate_id, self.jess_id, [('f4', 'e5'), ('g4', 'Qh4')] )
+	# 	with self.subTest('Game is inactive'):
+
+	# 	with self.subTest('Outcome is win for black'):
+
+	# 		with self.db.cursor() as cur:
+	# 			cur.execute('SELECT outcome FROM games')
+	# 			self.assertEqual(cur.fetchone()[0], False)
+
+	# @unittest.expectedFailure
 	def test_resign(self):
 		self.handle_message(self.nate_id, 'resign', expected_replies=2)
-		self.assertLastMessageEquals(self.nate_id, 'Nate has resigned. Jess wins!')
-		self.assertLastMessageEquals(self.jess_id, 'Nate has resigned. Jess wins!')
+		self.assertLastMessageEquals(self.nate_id, 'Nate resigns. Jess wins!')
+		self.assertLastMessageEquals(self.jess_id, 'Nate resigns. Jess wins!')
+		with self.db.cursor() as cur:
+			cur.execute('SELECT outcome FROM games')
+			self.assertEqual(cur.fetchone()[0], fbchessbot.BLACK_WINS)
 		with self.db.cursor() as cur:
 			cur.execute('SELECT active FROM games')
 			self.assertEqual(cur.fetchone()[0], False)
+
+	def test_resign_without_game(self):
+		self.handle_message(self.chad_id, 'resign', expected_replies=1)
+		self.assertLastMessageEquals(self.chad_id, 'You have no active games')
 
 	@unittest.skip
 	def test_draw(self):

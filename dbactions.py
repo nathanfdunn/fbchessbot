@@ -24,8 +24,16 @@ class Game:
 			self.white = None
 			self.black = None
 			self.undo = False
+			self.outcome = None
 		else:
-			self.id, raw_board, self.active, self.white, self.black, self.undo = data_row
+			(self.id, 
+			raw_board,
+			self.active,
+			self.white,
+			self.black,
+			self.undo,
+			self.outcome) = data_row
+
 			self.white, self.black = str(self.white), str(self.black)
 			self.board = pickle.loads(bytes(raw_board))
 
@@ -92,6 +100,7 @@ class DB:
 	def cursor(self):
 		return self.conn.cursor()
 
+	# Just saves the serialized board
 	def save_game(self, game):
 		with self.cursor() as cur:
 			cur.execute('''
@@ -104,6 +113,14 @@ class DB:
 			cur.execute('''
 				UPDATE games SET undo = %s WHERE id = %s
 				''', [undo_flag, game.id])
+			cur.connection.commit()
+
+	# Meh, we'll just set active to false. Should be fine
+	def set_outcome(self, game, outcome):
+		with self.cursor() as cur:
+			cur.execute('''
+				UPDATE games SET active = FALSE, outcome = %s WHERE id = %s
+				''', [outcome, game.id])
 			cur.connection.commit()
 
 	def create_new_game(self, whiteplayer, blackplayer):
@@ -131,7 +148,7 @@ class DB:
 			if opponentid:
 				opponentid = opponentid[0]
 				cur.execute("""
-					SELECT id, board, active, whiteplayer, blackplayer, undo
+					SELECT id, board, active, whiteplayer, blackplayer, undo, outcome
 					FROM games WHERE 
 					active = TRUE AND (
 						(whiteplayer = %s AND blackplayer = %s)
@@ -152,7 +169,7 @@ class DB:
 	def game_from_id(self, game_id):
 		with self.cursor() as cur:
 			cur.execute("""
-				SELECT id, board, active, whiteplayer, blackplayer, undo
+				SELECT id, board, active, whiteplayer, blackplayer, undo, outcome
 				FROM games WHERE 
 				id = %s
 				""", [game_id])

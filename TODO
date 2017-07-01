@@ -1,6 +1,9 @@
 Break tests into multiple files
 Group imports according to PEP8
 
+assertQueryResultEquals
+General "You have no active games"
+
 ~~~Unhardcode access tokens~~~
 Get better Facebook Page name
 

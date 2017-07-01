@@ -74,7 +74,7 @@ def migration1():
 			""")
 	cur.execute("INSERT INTO games (board) values (%s)", [psycopg2.Binary(b'Well hello thar')])
 	cur.connection.commit()
-	
+
 @register_migration
 def migration2():
 	op()
@@ -122,6 +122,36 @@ def migration5():
 	op()
 	cur.execute("""
 		DROP TABLE IF EXISTS scratch
+		""")
+	cur.connection.commit()
+
+@register_migration
+def migration6():
+	op()
+	cur.execute("""
+		ALTER TABLE games
+		ADD COLUMN outcome BOOLEAN
+		""")
+	cur.connection.commit()
+
+@register_migration
+def migration7():
+	op()
+	cur.execute("""
+		CREATE TABLE IF NOT EXISTS outcome (
+			id SERIAL PRIMARY KEY,
+			description VARCHAR(30)
+		)
+		""")
+	cur.execute("""
+		INSERT INTO outcome (description)
+		VALUES ('White wins'), ('Black wins'), ('Draw')
+		""")
+	cur.execute("""
+		ALTER TABLE games DROP COLUMN outcome
+		""")
+	cur.execute("""
+		ALTER TABLE games ADD COLUMN outcome INT REFERENCES outcome(id)
 		""")
 	cur.connection.commit()
 

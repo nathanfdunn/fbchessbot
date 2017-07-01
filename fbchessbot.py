@@ -22,6 +22,11 @@ VERIFY_TOKEN = os.environ['VERIFY_TOKEN']
 PAGE_ACCESS_TOKEN = os.environ['PAGE_ACCESS_TOKEN']
 DATABASE_URL = os.environ['DATABASE_URL']
 
+# Outcome codes
+WHITE_WINS = 1
+BLACK_WINS = 2
+DRAW = 3
+
 
 db = dbactions.DB()
 
@@ -223,6 +228,7 @@ def handle_message(sender, message):
 		or handle_play(sender, message)
 		or handle_new(sender, message)
 		or handle_pgn(sender, message)
+		or handle_resign(sender, message)
 		or handle_move(sender, message)
 	)
 
@@ -261,6 +267,25 @@ def handle_pgn(sender, message):
 		return False
 
 @notify
+def handle_resign(sender, message):
+	if not re.match(r'^\s*resign\s*$', message, re.IGNORECASE):
+		return False
+
+	game = db.get_active_game(sender)
+	if not game:
+		send_message(sender, 'You have no active games')
+		return True
+
+	outcome = BLACK_WINS if sender == game.white else WHITE_WINS
+	db.set_outcome(game, outcome)
+	opponentid = game.black if sender == game.white else game.white
+	sender_nickname = db.nickname_from_id(sender)
+	opponent_nickname = db.nickname_from_id(opponentid)
+	send_message(game.white, f'{sender_nickname} resigns. {opponent_nickname} wins!')
+	send_message(game.black, f'{sender_nickname} resigns. {opponent_nickname} wins!')
+	return True
+
+@notify
 def handle_move(sender, message):
 	game = db.get_active_game(sender)
 	if not game:
@@ -294,6 +319,8 @@ def handle_move(sender, message):
 		send_game_rep(opponentid, game)
 	
 	if game.board.is_checkmate():
+		outcome = WHITE_WINS if sender == game.white else BLACK_WINS
+		db.set_outcome(game, outcome)
 		send_message(sender, f'Checkmate! {nickname} wins!')
 		send_message(opponentid, f'Checkmate! {nickname} wins!')
 	elif game.board.is_check():
