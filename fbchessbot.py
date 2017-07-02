@@ -42,10 +42,11 @@ def board_image(fen):
 @app.route('/pgn/<game_id>', methods=['GET'])
 def board_pgn(game_id):
 	print(f'Generating PGN for {game_id}')
-	game = db.game_from_id(game_id.strip('.pgn'))
-	print(game.board)
-	pgn = chess.pgn.Game.from_board(game.board)
-	print(pgn)
+	# game = db.game_from_id(game_id.strip('.pgn'))
+	# print(game.board)
+	board = db.board_from_id(game_id.strip('.pgn'))
+	pgn = chess.pgn.Game.from_board(board)
+	# print(pgn)
 	with open(game_id, 'w') as f:
 		exporter = chess.pgn.FileExporter(f)
 		pgn.accept(exporter)
@@ -118,8 +119,8 @@ def handle_message(sender, message):
 
 def handle_show(sender, message):
 	if re.match(r'^\s*show\s*$', message, re.IGNORECASE):
-		game = db.get_active_game(sender)
-		send_game_rep(sender, game, game.white == sender)
+		game = db.get_active_gameII(sender)
+		send_game_rep(sender, game, game.whiteplayer.id == int(sender))
 		active = 'White' if game.board.turn else 'Black'
 		send_message(sender, active + ' to move')
 		return True
@@ -137,7 +138,8 @@ def handle_help(sender, message):
 def handle_undo(sender, message):
 	if not re.match(r'^\s*undo\s*$', message, re.IGNORECASE):
 		return False
-	g = db.get_active_game(sender)
+	sender = int(sender)
+	g = db.get_active_gameII(sender)
 	if not g:
 		send_message(sender, 'You have no active games')
 		return True
@@ -146,14 +148,14 @@ def handle_undo(sender, message):
 			g.board.pop()
 			db.set_undo_flag(g, False)
 			db.save_game(g)
-			opponentid = g.black if g.white == sender else g.white
+			opponentid = g.blackplayer.id if g.whiteplayer.id == sender else g.whiteplayer.id
 			nickname = db.nickname_from_id(sender)
 			send_message(opponentid, f'{nickname} accepted your undo request')
 			show_game_to_both(g)
 		else:
 			send_message(sender, 'You have already requested an undo')
 	else:
-		opponentid = g.black if g.white == sender else g.white
+		opponentid = g.blackplayer.id if g.whiteplayer.id == sender else g.whiteplayer.id
 		nickname = db.nickname_from_id(sender)
 		db.set_undo_flag(g, True)
 		send_message(opponentid, f'{nickname} has requested an undo')
@@ -218,7 +220,7 @@ def handle_new(sender, message):
 		nickname = db.nickname_from_id(sender)
 		db.create_new_game(whiteplayer, blackplayer)
 		send_message(opponentid, f'{nickname} started a new game')
-		g = db.get_active_game(sender)
+		g = db.get_active_gameII(sender)
 		show_game_to_both(g)
 		return True
 	return False
@@ -226,7 +228,8 @@ def handle_new(sender, message):
 
 def handle_pgn(sender, message):
 	if re.match(r'^\s*pgn\s*$', message, re.IGNORECASE):
-		game = db.get_active_game(sender)
+		# TODO switch to using the new method
+		game = db.get_active_game_OBSOLETE(sender)
 		send_pgn(sender, game)
 		return True
 	else:
@@ -234,26 +237,28 @@ def handle_pgn(sender, message):
 
 
 def handle_resign(sender, message):
+	sender = int(sender)
 	if not re.match(r'^\s*resign\s*$', message, re.IGNORECASE):
 		return False
 
-	game = db.get_active_game(sender)
+	game = db.get_active_gameII(sender)
 	if not game:
 		send_message(sender, 'You have no active games')
 		return True
 
-	outcome = BLACK_WINS if sender == game.white else WHITE_WINS
+	outcome = BLACK_WINS if sender == game.whiteplayer.id else WHITE_WINS
 	db.set_outcome(game, outcome)
-	opponentid = game.black if sender == game.white else game.white
+	opponentid = game.blackplayer.id if sender == game.whiteplayer.id else game.whiteplayer.id
 	sender_nickname = db.nickname_from_id(sender)
 	opponent_nickname = db.nickname_from_id(opponentid)
-	send_message(game.white, f'{sender_nickname} resigns. {opponent_nickname} wins!')
-	send_message(game.black, f'{sender_nickname} resigns. {opponent_nickname} wins!')
+	send_message(game.whiteplayer.id, f'{sender_nickname} resigns. {opponent_nickname} wins!')
+	send_message(game.blackplayer.id, f'{sender_nickname} resigns. {opponent_nickname} wins!')
 	return True
 
 
 def handle_move(sender, message):
-	game = db.get_active_game(sender)
+	sender = int(sender)
+	game = db.get_active_gameII(sender)
 	if not game:
 		send_message(sender, 'You have no active games')
 		return True
@@ -273,9 +278,9 @@ def handle_move(sender, message):
 	db.save_game(game)
 	db.set_undo_flag(game, False)
 
-	opponentid = game.black if game.white == sender else game.white
+	opponentid = game.blackplayer.id if game.whiteplayer.id == sender else game.whiteplayer.id
 
-	if sender == game.white:
+	if sender == game.whiteplayer.id:
 		send_game_rep(sender, game)
 		send_message(opponentid, f'{nickname} played {message}')
 		send_game_rep(opponentid, game, False)
@@ -285,7 +290,7 @@ def handle_move(sender, message):
 		send_game_rep(opponentid, game)
 	
 	if game.board.is_checkmate():
-		outcome = WHITE_WINS if sender == game.white else BLACK_WINS
+		outcome = WHITE_WINS if sender == game.whiteplayer.id else BLACK_WINS
 		db.set_outcome(game, outcome)
 		send_message(sender, f'Checkmate! {nickname} wins!')
 		send_message(opponentid, f'Checkmate! {nickname} wins!')
@@ -316,6 +321,7 @@ def send_pgn(recipient, game):
 
 
 def send_game_rep(recipient, game, perspective=True):
+	recipient = str(recipient)			# this is probably the one place it's necessary to be a string
 	r = requests.post('https://graph.facebook.com/v2.9/me/messages',
 		params={'access_token': PAGE_ACCESS_TOKEN},
 		data=json.dumps({
@@ -336,8 +342,8 @@ def send_game_rep(recipient, game, perspective=True):
 
 
 def show_game_to_both(game):
-	send_game_rep(game.white, game)
-	send_game_rep(game.black, game, False)
+	send_game_rep(game.whiteplayer.id, game)
+	send_game_rep(game.blackplayer.id, game, False)
 
 
 def send_message(recipient, text):

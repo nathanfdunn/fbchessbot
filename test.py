@@ -88,7 +88,7 @@ class BaseTest(unittest.TestCase, CustomAssertions):
 		actual_replies = num_replies_finish - num_replies_start
 		
 		if expected_replies is not None and actual_replies != expected_replies:
-			raise AssertionError(f'Expected {expected_replies} replies, got {actual_replies}')
+			raise AssertionError(f'Expected {expected_replies} replies, got {actual_replies} ({sent_messages})')
 
 	# For setting up the board
 	def perform_moves(self, white_id, black_id, move_list, clear=True):
@@ -478,20 +478,24 @@ class TestGameFinish(GamePlayTest):
 	def test_draw(self):
 		pass
 
-@unittest.skip
-class TestMiscellaneous(BaseTest):
+class TestMiscellaneous(GamePlayTest):
 	def test_show(self):
-		with self.subTest('Without game'):
-			pass
+		# with self.subTest('Without game'):
+		# 	pass
 		with self.subTest('With game'):
-			pass
+			self.handle_message(self.nate_id, 'show')
+			self.assertLastGameRepEquals(self.nate_id, 'rnbqkbnr-pppppppp-8-8-8-8-PPPPPPPP-RNBQKBNR')
+			self.assertLastMessageEquals(self.nate_id, 'White to move')
 
+	@unittest.skip
 	def test_help(self):
 		pass
 
+	@unittest.skip
 	def test_pgn(self):
 		pass
 
+	@unittest.skip
 	def test_pgns(self):
 		pass
 	# def pass

@@ -20,31 +20,33 @@ class Game:
 	def __init__(self, id, raw_board, active, whiteplayer, blackplayer, undo, outcome):
 		self.id = id
 		self.board = pickle.loads(bytes(raw_board))
+		# Wow I don't use any of the stuff below
 		self.active = active
 		self.whiteplayer = whiteplayer
 		self.blackplayer = blackplayer
 		self.undo = undo
 		self.outcome = outcome
-
+		# self.black = None
+		# self.white = None
 		# if data_row is None:
-		# 	self.id = None
-		# 	self.active = False
-		# 	self.board = chess.Board()
-		# 	self.white = None
-		# 	self.black = None
-		# 	self.undo = False
-		# 	self.outcome = None
+		#   self.id = None
+		#   self.active = False
+		#   self.board = chess.Board()
+		#   self.white = None
+		#   self.black = None
+		#   self.undo = False
+		#   self.outcome = None
 		# else:
-		# 	(self.id, 
-		# 	raw_board,
-		# 	self.active,
-		# 	self.white,
-		# 	self.black,
-		# 	self.undo,
-		# 	self.outcome) = data_row
+		#   (self.id, 
+		#   raw_board,
+		#   self.active,
+		#   self.white,
+		#   self.black,
+		#   self.undo,
+		#   self.outcome) = data_row
 
-		# 	self.white, self.black = str(self.white), str(self.black)
-		# 	self.board = pickle.loads(bytes(raw_board))
+		#   self.white, self.black = str(self.white), str(self.black)
+		#   self.board = pickle.loads(bytes(raw_board))
 
 	def display(self):
 		print(self.board)
@@ -67,11 +69,26 @@ class Game:
 		return f'https://fbchessbot.herokuapp.com/pgn/{self.id}.pgn'
 
 	def is_active_player(self, playerid):
+		playerid = int(playerid)
 		WHITE = True
-		if self.board.turn == WHITE:		
-			return playerid == self.white
+		if self.board.turn == WHITE:        
+			return playerid == self.whiteplayer.id
 		else:
-			return playerid == self.black
+			return playerid == self.blackplayer.id
+
+	def get_opponent(self, playerid):
+		playerid = int(playerid)
+		if self.blackplayer.id == playerid:
+			return self.whiteplayer
+		elif self.whiteplayer.id == playerid:
+			return self.blackplayer
+		else:
+			raise ValueError(f'{playerid} is not in this game. {self.blackplayer}, {self.whiteplayer}')
+
+	@classmethod
+	def from_empty(cls):
+		pass
+
 
 class DB:
 	def __init__(self):
@@ -130,7 +147,7 @@ class DB:
 
 	def create_new_game(self, whiteplayer, blackplayer):
 		with self.cursor() as cur:
-			new_game = Game()
+			# new_game = Game.from_empty()
 			# TODO remove probably because we won't be able to start a new game if old isn't finished
 			cur.execute("""
 				UPDATE games SET active = FALSE WHERE 
@@ -143,10 +160,26 @@ class DB:
 				INSERT INTO games (board, active, whiteplayer, blackplayer, undo) VALUES (
 					%s, TRUE, %s, %s, FALSE
 				)
-				""", [new_game.serialized(), whiteplayer, blackplayer])
+				""", [pickle.dumps(chess.Board()), whiteplayer, blackplayer])
 			cur.connection.commit()
 
+	# def get_player_context(self, playerid):
+	#     with self.cursor() as cur:
+	#         cur.execute("""
+	#             SELECT
+	#                 p.id, p.nickname, p.opponent_context,
+	#                 o.id, o.nickname, o.opponent_context
+	#             FROM player p
+	#             LEFT JOIN player o ON p.opponent_context = o.id
+	#             WHERE p.id = %s
+	#             """, [playerid])
+	#         row = cur.fetchone()
+	#         player = Player(row[0], row[1], row[2])
+	#         opponent = None if row[2] is None else Player(row[3], row[4], row[5])
+	#         return player, opponent
+
 	def get_active_gameII(self, playerid):
+		playerid = int(playerid)
 		with self.cursor() as cur:
 			cur.execute("""
 				SELECT
@@ -164,13 +197,13 @@ class DB:
 						(g.whiteplayer = o.id AND g.blackplayer = p.id)
 					)
 				""", [playerid])
-			row = cur.fetchone()			# should be the only one
+			row = cur.fetchone()            # should be the only one
 			if row is None:
 				return None
 
 			player = Player(row[0], row[1], row[2])
 			opponent = Player(row[3], row[4], row[5])
-			if row[9] == playerid:			# if g.whiteplayer == playerid
+			if row[9] == playerid:          # if g.whiteplayer == playerid
 				whiteplayer = player
 				blackplayer = opponent
 			else:
@@ -179,61 +212,61 @@ class DB:
 
 			return Game(row[6], row[7], row[8], whiteplayer, blackplayer, row[11], row[12])
 
-	def get_active_game(self, playerid):
-		with self.cursor() as cur:
-			cur.execute("SELECT opponent_context FROM player WHERE id = %s", [playerid])
-			opponentid = cur.fetchone()
-			if opponentid:
-				opponentid = opponentid[0]
-				cur.execute("""
-					SELECT id, board, active, whiteplayer, blackplayer, undo, outcome
-					FROM games WHERE
-					active = TRUE AND (
-						(whiteplayer = %s AND blackplayer = %s)
-						OR
-						(blackplayer = %s AND whiteplayer = %s)
-					)
-					""", [playerid, opponentid, playerid, opponentid])
-				# For now we don't want to impact the game if there is something wrong
-				# assert cur.rowcount <= 1
-				result = cur.fetchone()
-				if result:
-					return Game(result)
+	# def get_active_game(self, playerid):
+	# 	with self.cursor() as cur:
+	# 		cur.execute("SELECT opponent_context FROM player WHERE id = %s", [playerid])
+	# 		opponentid = cur.fetchone()
+	# 		if opponentid:
+	# 			opponentid = opponentid[0]
+	# 			cur.execute("""
+	# 				SELECT id, board, active, whiteplayer, blackplayer, undo, outcome
+	# 				FROM games WHERE
+	# 				active = TRUE AND (
+	# 					(whiteplayer = %s AND blackplayer = %s)
+	# 					OR
+	# 					(blackplayer = %s AND whiteplayer = %s)
+	# 				)
+	# 				""", [playerid, opponentid, playerid, opponentid])
+	# 			# For now we don't want to impact the game if there is something wrong
+	# 			# assert cur.rowcount <= 1
+	# 			result = cur.fetchone()
+	# 			if result:
+	# 				return Game(result)
+    #
+	# 			return None
+	# 		else:           # no active game
+	# 			return None
 
-				return None
-			else:			# no active game
-				return None
-
-	def game_from_id(self, game_id):
+	def board_from_id(self, game_id):
 		with self.cursor() as cur:
 			cur.execute("""
-				SELECT id, board, active, whiteplayer, blackplayer, undo, outcome
+				SELECT board
 				FROM games WHERE 
 				id = %s
 				""", [game_id])
 			# Assumes there will be a match
-			return Game(cur.fetchone())
+			return pickle.loads(bytes(cur.fetchone()[0]))
 
-	def user_is_registered(self, sender):
-		with self.cursor() as cur:
-			cur.execute('SELECT COUNT(*) FROM player WHERE id = %s', [int(sender)])
-			return bool(cur.fetchone()[0])
+	# def user_is_registered(self, sender):
+	#     with self.cursor() as cur:
+	#         cur.execute('SELECT COUNT(*) FROM player WHERE id = %s', [int(sender)])
+	#         return bool(cur.fetchone()[0])
 
 	def set_nickname(self, sender, nickname):
 		playerid = int(sender)
 		with self.cursor() as cur:
-			# cur.execute('SELECT COUNT(*) FROM player WHERE id = %s', [playerid])
-			# user_exists = cur.fetchone()[0]
-			user_exists = self.user_is_registered(sender)
-			# if cur.fetchone():	# user already exists
+			cur.execute('SELECT COUNT(*) FROM player WHERE id = %s', [playerid])
+			user_exists = cur.fetchone()[0]
+			# user_exists = self.user_is_registered(sender)
+			# if cur.fetchone():    # user already exists
 			print('user_exists', user_exists)
 			if user_exists:
-				print('user existed')
+				# print('user existed')
 				cur.execute('UPDATE player SET nickname = %s WHERE id = %s', [nickname, playerid])
 				cur.connection.commit()
 				return False
-			else:				# user does not exist
-				print('user does not exist')
+			else:               # user does not exist
+				# print('user does not exist')
 				cur.execute('INSERT INTO player (id, nickname) VALUES (%s, %s)', [playerid, nickname])
 				cur.connection.commit()
 				return True
@@ -268,22 +301,22 @@ class DB:
 			# cur.execute('UPDATE player SET opponent_context = %s WHERE id = %s', [challengerid, opponentid])
 			cur.connection.commit()
 	# def active_game(self, id):
-	# 	pass
+	#   pass
 
 	# def save_game(self, game):
-	# 	pass
+	#   pass
 
 	# def new_game(self, blackplayer, whiteplayer):
-	# 	pass
+	#   pass
 
 	# def user_exists(self, id):
-	# 	pass
+	#   pass
 
 	# def set_username(self, id, username):
-	# 	pass
+	#   pass
 
 	# def player_from_id(self, id):
-	# 	pass
+	#   pass
 
 	# def player_from_name(self, username):
-	# 	pass
+	#   pass
