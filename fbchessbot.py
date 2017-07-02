@@ -45,11 +45,8 @@ def board_image(fen):
 @app.route('/pgn/<game_id>', methods=['GET'])
 def board_pgn(game_id):
 	print(f'Generating PGN for {game_id}')
-	# game = db.game_from_id(game_id.strip('.pgn'))
-	# print(game.board)
 	board = db.board_from_id(game_id.strip('.pgn'))
 	pgn = chess.pgn.Game.from_board(board)
-	# print(pgn)
 	with open(game_id, 'w') as f:
 		exporter = chess.pgn.FileExporter(f)
 		pgn.accept(exporter)
@@ -147,23 +144,12 @@ def require_game(func):
 	return wrapper
 
 commands = []
-
 def handle_message(sender, message):
 	for func in commands:
 		if func(sender, message):
 			return
+	handle_move(sender, message)
 
-	(
-		# handle_show(sender, message) or
-		# handle_help(sender, message) or
-		# handle_undo(sender, message) or
-		# handle_register(sender, message) or
-		# handle_play(sender, message) or
-		# handle_new(sender, message) or
-		# handle_pgn(sender, message) or
-		# handle_resign(sender, message) or
-		handle_move(sender, message)
-	)
 
 @command
 @require_game
@@ -174,9 +160,11 @@ def show(sender, game):
 	else:
 		send_message(sender, 'Black to move')
 
+
 @command
 def help(sender):
 	send_message(sender, 'Help text coming soon...')
+
 
 @command
 @require_game
@@ -188,44 +176,17 @@ def undo(sender, game):
 			db.set_undo_flag(g, False)
 			db.save_game(g)
 			opponentid = g.get_opponent(sender).id
-			# opponentid = g.blackplayer.id if g.whiteplayer.id == sender else g.whiteplayer.id
 			nickname = db.nickname_from_id(sender)
 			send_message(opponentid, f'{nickname} accepted your undo request')
 			show_game_to_both(g)
 		else:
 			send_message(sender, 'You have already requested an undo')
 	else:
-		# opponentid = g.blackplayer.id if g.whiteplayer.id == sender else g.whiteplayer.id
 		opponentid = g.get_opponent(sender).id
 		nickname = db.nickname_from_id(sender)
 		db.set_undo_flag(g, True)
 		send_message(opponentid, f'{nickname} has requested an undo')
 
-# def handle_undo(sender, message):
-# 	if not re.match(r'^\s*undo\s*$', message, re.IGNORECASE):
-# 		return False
-# 	sender = int(sender)
-# 	g = db.get_active_gameII(sender)
-# 	if not g:
-# 		send_message(sender, 'You have no active games')
-# 		return True
-# 	if g.undo:
-# 		if g.is_active_player(sender):
-# 			g.board.pop()
-# 			db.set_undo_flag(g, False)
-# 			db.save_game(g)
-# 			opponentid = g.blackplayer.id if g.whiteplayer.id == sender else g.whiteplayer.id
-# 			nickname = db.nickname_from_id(sender)
-# 			send_message(opponentid, f'{nickname} accepted your undo request')
-# 			show_game_to_both(g)
-# 		else:
-# 			send_message(sender, 'You have already requested an undo')
-# 	else:
-# 		opponentid = g.blackplayer.id if g.whiteplayer.id == sender else g.whiteplayer.id
-# 		nickname = db.nickname_from_id(sender)
-# 		db.set_undo_flag(g, True)
-# 		send_message(opponentid, f'{nickname} has requested an undo')
-# 	return True
 
 @command(r'my name is (\S*)')
 def register(sender, nickname):
@@ -243,31 +204,6 @@ def register(sender, nickname):
 	else:
 		send_message(sender, r'Nickname must match regex [a-z]+[0-9]*')
 
-	# elif re.match(r'^\s*my\s+name\s+is\s+', message, re.IGNORECASE):
-	# 	send_message(sender, 'Nickname must match regex [a-z]+[0-9]*')
-	# 	return True
-	# else:
-	# 	return False
-
-# def handle_register(sender, message):
-# 	m = re.match(r'^\s*my\s+name\s+is\s+([a-z]+[0-9]*)\s*$', message, re.IGNORECASE)
-# 	if m:
-# 		nickname = m.groups()[0]
-# 		if len(nickname) > 32:
-# 			send_message(sender, 'That nickname is too long (Try 32 or less characters)')
-# 			return True
-# 		user_is_new = db.set_nickname(sender, nickname)
-# 		if user_is_new:
-# 			send_message(sender, f'Nice to meet you {nickname}!')
-# 		else:
-# 			send_message(sender, f'I set your nickname to {nickname}')
-
-# 		return True
-# 	elif re.match(r'^\s*my\s+name\s+is\s+', message, re.IGNORECASE):
-# 		send_message(sender, 'Nickname must match regex [a-z]+[0-9]*')
-# 		return True
-# 	else:
-# 		return False
 
 @command(r'play against (\S*)')
 def play_against(sender, nickname):
@@ -284,27 +220,6 @@ def play_against(sender, nickname):
 	else:
 		send_message(sender, f"No player named '{nickname}'")
 
-
-# def handle_play(sender, message):
-# 	playerid = int(sender)
-# 	m = re.match(r'^\s*play\s+against\s+([a-z]+[0-9]*)$', message, re.IGNORECASE)
-# 	if not m:
-# 		return False
-
-# 	nickname = m.groups()[0]
-# 	opponentid = db.id_from_nickname(nickname)
-# 	if opponentid:
-# 		opponent_opponent_context = db.get_opponent_context(opponentid)
-# 		if not opponent_opponent_context:
-# 			sender_nickname = db.nickname_from_id(sender)
-# 			db.set_opponent_context(opponentid, sender)
-# 			send_message(opponentid, f'You are now playing against {sender_nickname}')
-# 		db.set_opponent_context(sender, opponentid)
-# 		send_message(sender, f'You are now playing against {nickname}')
-# 	else:
-# 		send_message(sender, f"No player named '{nickname}'")
-
-# 	return True
 
 @command(r'new game (\S*)')
 def new_game(sender, color):
@@ -327,39 +242,11 @@ def new_game(sender, color):
 	show_game_to_both(g)
 
 
-# def handle_new(sender, message):
-# 	m = re.match(r'^new game (white|black)$', message, re.IGNORECASE)
-# 	if m:
-# 		opponentid = db.get_opponent_context(sender)
-# 		if not opponentid:
-# 			send_message(sender, "You aren't playing against anyone (Use command 'play against <name>')")
-# 			return True
-# 		color = m.groups()[0].lower()
-# 		if color == 'white':
-# 			whiteplayer, blackplayer = sender, opponentid
-# 		else:
-# 			whiteplayer, blackplayer = opponentid, sender
-# 		nickname = db.nickname_from_id(sender)
-# 		db.create_new_game(whiteplayer, blackplayer)
-# 		send_message(opponentid, f'{nickname} started a new game')
-# 		g = db.get_active_gameII(sender)
-# 		show_game_to_both(g)
-# 		return True
-# 	return False
-
 @command
 def pgn(sender):
 	game = db.get_active_gameII(sender)
 	send_pgn(sender, game)
 
-# def handle_pgn(sender, message):
-# 	if re.match(r'^\s*pgn\s*$', message, re.IGNORECASE):
-# 		# TODO switch to using the new method
-# 		game = db.get_active_game_OBSOLETE(sender)
-# 		send_pgn(sender, game)
-# 		return True
-# 	else:
-# 		return False
 
 @command
 @require_game
@@ -372,25 +259,6 @@ def resign(sender, game):
 	opponent_nickname = db.nickname_from_id(opponentid)
 	send_message(game.whiteplayer.id, f'{sender_nickname} resigns. {opponent_nickname} wins!')
 	send_message(game.blackplayer.id, f'{sender_nickname} resigns. {opponent_nickname} wins!')
-
-# def handle_resign(sender, message):
-# 	sender = int(sender)
-# 	if not re.match(r'^\s*resign\s*$', message, re.IGNORECASE):
-# 		return False
-
-# 	game = db.get_active_gameII(sender)
-# 	if not game:
-# 		send_message(sender, 'You have no active games')
-# 		return True
-
-# 	outcome = BLACK_WINS if sender == game.whiteplayer.id else WHITE_WINS
-# 	db.set_outcome(game, outcome)
-# 	opponentid = game.blackplayer.id if sender == game.whiteplayer.id else game.whiteplayer.id
-# 	sender_nickname = db.nickname_from_id(sender)
-# 	opponent_nickname = db.nickname_from_id(opponentid)
-# 	send_message(game.whiteplayer.id, f'{sender_nickname} resigns. {opponent_nickname} wins!')
-# 	send_message(game.blackplayer.id, f'{sender_nickname} resigns. {opponent_nickname} wins!')
-# 	return True
 
 
 def handle_move(sender, message):
