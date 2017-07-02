@@ -44,7 +44,6 @@ def board_image(fen):
 
 @app.route('/pgn/<game_id>', methods=['GET'])
 def board_pgn(game_id):
-	print(f'Generating PGN for {game_id}')
 	board = db.board_from_id(game_id.strip('.pgn'))
 	pgn = chess.pgn.Game.from_board(board)
 	with open(game_id, 'w') as f:
@@ -55,30 +54,15 @@ def board_pgn(game_id):
 
 @app.route('/', methods=['GET'])
 def hello():
-	print('processing root get')
 	return '<h1>Hello</h1>'
 
 
 @app.route('/webhook', methods=['GET'])
 def verify():
-	print('Handling Verification')
 	if request.args.get('hub.verify_token') == VERIFY_TOKEN:
-		print('Verification successful')
 		return request.args.get('hub.challenge', '')
 	else:
-		print('Verification failed')
 		return 'Error, wrong validation token'
-
-
-def dontcrash(func):
-	@functools.wraps(func)
-	def wrapper(*args, **kwargs):
-		try:
-			return func(*args, **kwargs)
-		except Exception as e:
-			print(repr(e))
-			return 'ok'
-	return wrapper
 
 
 def messaging_events(payload):
@@ -95,13 +79,15 @@ def messaging_events(payload):
 
 
 @app.route('/webhook', methods=['POST'])
-@dontcrash
 def messages():
-	for sender, message in messaging_events(request.get_data()):
-		message = message.strip()
-		handle_message(sender, message)
-
-	return 'ok'
+	try:
+		for sender, message in messaging_events(request.get_data()):
+			sender, message = int(sender), message.strip()
+			handle_message(sender, message)
+	except Exception as e:
+		print('Error handling messages:', repr(e))
+	finally:
+		return 'ok'
 
 def command(regex_or_func):
 	if type(regex_or_func) is str:
@@ -169,22 +155,21 @@ def help(sender):
 @command
 @require_game
 def undo(sender, game):
-	g=game
-	if g.undo:
-		if g.is_active_player(sender):
-			g.board.pop()
-			db.set_undo_flag(g, False)
-			db.save_game(g)
-			opponentid = g.get_opponent(sender).id
+	if game.undo:
+		if game.is_active_player(sender):
+			game.board.pop()
+			db.set_undo_flag(game, False)
+			db.save_game(game)
+			opponentid = game.get_opponent(sender).id
 			nickname = db.nickname_from_id(sender)
 			send_message(opponentid, f'{nickname} accepted your undo request')
-			show_game_to_both(g)
+			show_game_to_both(game)
 		else:
 			send_message(sender, 'You have already requested an undo')
 	else:
-		opponentid = g.get_opponent(sender).id
+		opponentid = game.get_opponent(sender).id
 		nickname = db.nickname_from_id(sender)
-		db.set_undo_flag(g, True)
+		db.set_undo_flag(game, True)
 		send_message(opponentid, f'{nickname} has requested an undo')
 
 
@@ -194,7 +179,6 @@ def register(sender, nickname):
 		send_message(sender, 'That nickname is too long (Try 32 or less characters)')
 
 	elif re.match(r'^[a-z]+[0-9]*$', nickname, re.IGNORECASE):
-		# nickname = m.groups()[0]
 		user_is_new = db.set_nickname(sender, nickname)
 		if user_is_new:
 			send_message(sender, f'Nice to meet you {nickname}!')
@@ -207,7 +191,6 @@ def register(sender, nickname):
 
 @command(r'play against (\S*)')
 def play_against(sender, nickname):
-	playerid = int(sender)
 	opponentid = db.id_from_nickname(nickname)
 	if opponentid:
 		opponent_opponent_context = db.get_opponent_context(opponentid)
@@ -262,7 +245,6 @@ def resign(sender, game):
 
 
 def handle_move(sender, message):
-	sender = int(sender)
 	game = db.get_active_gameII(sender)
 	if not game:
 		send_message(sender, 'You have no active games')
@@ -305,7 +287,6 @@ def handle_move(sender, message):
 
 
 def send_pgn(recipient, game):
-	print('pgn url:', game.pgn_url())
 	r = requests.post('https://graph.facebook.com/v2.9/me/messages',
 		params={'access_token': PAGE_ACCESS_TOKEN},
 		data=json.dumps({
@@ -343,7 +324,7 @@ def send_game_rep(recipient, game, perspective=True):
 		headers={'Content-type': 'application/json'}
 	)
 	if r.status_code != requests.codes.ok:
-		print('Error I think:', r.text)
+		print('Error while sending image:', r.text)
 
 
 def show_game_to_both(game):

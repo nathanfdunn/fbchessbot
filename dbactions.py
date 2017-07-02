@@ -279,7 +279,7 @@ class DB:
 			cur.execute('SELECT id FROM player WHERE LOWER(nickname) = LOWER(%s)', [nickname])
 			result = cur.fetchone()
 			if result:
-				return str(result[0])
+				return result[0]
 			return None
 
 	def nickname_from_id(self, playerid):

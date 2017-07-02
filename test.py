@@ -12,17 +12,17 @@ import fbchessbot
 
 sent_messages = defaultdict(list)
 def mock_send_message(recipient, text):
-	recipient = str(recipient)
+	recipient = recipient
 	sent_messages[recipient].append(text)
 
 sent_game_reps = defaultdict(list)
 def mock_send_game_rep(recipient, game, perspective=True):
-	recipient = str(recipient)
+	recipient = recipient
 	sent_game_reps[recipient].append(game.image_url(perspective))
 
 sent_pgns = defaultdict(list)
 def mock_send_pgn(recipient, game):
-	recipient = str(recipient)
+	recipient = recipient
 	sent_pgns[recipient].append(game.pgn_url())
 
 def clear_mocks():
@@ -39,7 +39,7 @@ _sentinel = object()
 
 class CustomAssertions:
 	def assertLastMessageEquals(self, recipient, text, *, target_index=-1):
-		recipient = str(recipient)
+		# recipient = str(recipient)
 		messages = sent_messages[recipient]
 		if not messages:
 			raise AssertionError(f'No messages for {recipient}. Some for {[recipient for recipient in sent_messages if sent_messages[recipient]]}{sent_messages}')
@@ -48,7 +48,7 @@ class CustomAssertions:
 		self.assertEqual(last_message, text)
 
 	def assertLastGameRepEquals(self, recipient, rep_url, *, target_index=-1):
-		recipient = str(recipient)
+		# recipient = str(recipient)
 		rep_url = 'https://fbchessbot.herokuapp.com/image/' + rep_url
 		reps = sent_game_reps[recipient]
 		if not reps:
@@ -63,10 +63,10 @@ class BaseTest(unittest.TestCase, CustomAssertions):
 	@classmethod
 	def setUpClass(cls):
 		cls.db = dbactions.DB()
-		cls.nate_id = '32233848429'
-		cls.chad_id = '83727482939'
-		cls.jess_id = '47463849663'
-		cls.izzy_id = '28394578322'
+		cls.nate_id = 32233848429
+		cls.chad_id = 83727482939
+		cls.jess_id = 47463849663
+		cls.izzy_id = 28394578322
 
 	@classmethod
 	def tearDownClass(cls):
@@ -220,8 +220,8 @@ class TestOpponentContext(BaseTest):
 	# Fails so bad it screws up the rest of the tests
 	@unittest.skip
 	def test_unregistered_cannot_set_opponent_context(self):
-		self.handle_message('839293', 'Play against Nate')
-		self.assertLastMessageEquals('What is your name?')
+		self.handle_message(839293, 'Play against Nate')
+		self.assertLastMessageEquals(839293, 'What is your name?')
 
 	def test_opponent_context_automatically_set_on_newbie(self):
 		self.handle_message(self.nate_id, 'Play against Chad', expected_replies=2)
@@ -229,14 +229,14 @@ class TestOpponentContext(BaseTest):
 		self.assertLastMessageEquals(self.nate_id, 'You are now playing against Chad')
 
 		# Yeah...still need to convert over to int ids
-		self.assertEqual(self.db.get_opponent_context(self.nate_id), int(self.chad_id))
-		self.assertEqual(self.db.get_opponent_context(self.chad_id), int(self.nate_id))
+		self.assertEqual(self.db.get_opponent_context(self.nate_id), self.chad_id)
+		self.assertEqual(self.db.get_opponent_context(self.chad_id), self.nate_id)
 
 	def test_opponent_context_not_set_automatically_on_other(self):
 		self.handle_message(self.nate_id, 'Play against Jess', expected_replies=1)
 		self.assertLastMessageEquals(self.nate_id, 'You are now playing against Jess')
-		self.assertEqual(self.db.get_opponent_context(self.nate_id), int(self.jess_id))
-		self.assertEqual(self.db.get_opponent_context(self.jess_id), int(self.izzy_id))
+		self.assertEqual(self.db.get_opponent_context(self.nate_id), self.jess_id)
+		self.assertEqual(self.db.get_opponent_context(self.jess_id), self.izzy_id)
 
 	@unittest.expectedFailure
 	def test_notifies_on_redundant_context_setting(self):
