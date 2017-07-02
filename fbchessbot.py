@@ -126,7 +126,10 @@ def require_game(func):
 		if not game:
 			send_message(sender, 'You have no active games')
 		else:
-			func(sender, game)
+			if sender == game.whiteplayer.id:
+				func(game.whiteplayer, game.blackplayer, game)
+			else:
+				func(game.blackplayer, game.whiteplayer, game)
 	return wrapper
 
 commands = []
@@ -139,12 +142,12 @@ def handle_message(sender, message):
 
 @command
 @require_game
-def show(sender, game):
-	send_game_rep(sender, game)
+def show(player, opponent, game):
+	send_game_rep(player.id, game)
 	if game.is_active_color(WHITE):
-		send_message(sender, 'White to move')
+		send_message(player.id, 'White to move')
 	else:
-		send_message(sender, 'Black to move')
+		send_message(player.id, 'Black to move')
 
 
 @command
@@ -154,23 +157,19 @@ def help(sender):
 
 @command
 @require_game
-def undo(sender, game):
+def undo(player, opponent, game):
 	if game.undo:
-		if game.is_active_player(sender):
+		if game.is_active_player(player.id):
 			game.board.pop()
 			db.set_undo_flag(game, False)
 			db.save_game(game)
-			opponentid = game.get_opponent(sender).id
-			nickname = db.nickname_from_id(sender)
-			send_message(opponentid, f'{nickname} accepted your undo request')
+			send_message(opponent.id, f'{player.nickname} accepted your undo request')
 			show_game_to_both(game)
 		else:
-			send_message(sender, 'You have already requested an undo')
+			send_message(player.id, 'You have already requested an undo')
 	else:
-		opponentid = game.get_opponent(sender).id
-		nickname = db.nickname_from_id(sender)
 		db.set_undo_flag(game, True)
-		send_message(opponentid, f'{nickname} has requested an undo')
+		send_message(opponent.id, f'{player.nickname} has requested an undo')
 
 
 @command(r'my name is (\S*)')
@@ -233,15 +232,11 @@ def pgn(sender):
 
 @command
 @require_game
-def resign(sender, game):
-	sender = int(sender)
-	outcome = BLACK_WINS if sender == game.whiteplayer.id else WHITE_WINS
+def resign(player, opponent, game):
+	outcome = BLACK_WINS if player.color == WHITE else WHITE_WINS
 	db.set_outcome(game, outcome)
-	opponentid = game.blackplayer.id if sender == game.whiteplayer.id else game.whiteplayer.id
-	sender_nickname = db.nickname_from_id(sender)
-	opponent_nickname = db.nickname_from_id(opponentid)
-	send_message(game.whiteplayer.id, f'{sender_nickname} resigns. {opponent_nickname} wins!')
-	send_message(game.blackplayer.id, f'{sender_nickname} resigns. {opponent_nickname} wins!')
+	send_message(player.id, f'{player.nickname} resigns. {opponent.nickname} wins!')
+	send_message(opponent.id, f'{player.nickname} resigns. {opponent.nickname} wins!')
 
 
 def handle_move(sender, message):

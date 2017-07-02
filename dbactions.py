@@ -14,7 +14,7 @@ except ModuleNotFoundError:
 
 DATABASE_URL = os.environ['DATABASE_URL']
 
-Player = collections.namedtuple('Player', 'id nickname opponentid')
+Player = collections.namedtuple('Player', 'id nickname opponentid color')
 
 class Game:
 	def __init__(self, id, raw_board, active, whiteplayer, blackplayer, undo, outcome):
@@ -204,8 +204,8 @@ class DB:
 			if row is None:
 				return None
 
-			player = Player(row[0], row[1], row[2])
-			opponent = Player(row[3], row[4], row[5])
+			player = Player(row[0], row[1], row[2], playerid == row[9])
+			opponent = Player(row[3], row[4], row[5], playerid != row[9])
 			if row[9] == playerid:          # if g.whiteplayer == playerid
 				whiteplayer = player
 				blackplayer = opponent
