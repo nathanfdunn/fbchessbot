@@ -262,6 +262,10 @@ class TestGameInitiation(BaseTest):
 		self.handle_message(self.jess_id, 'Play against Nate', expected_replies=None)
 		clear_mocks()
 
+	def test_cannot_use_invalid_color(self):
+		self.handle_message(self.nate_id, 'New game blue')
+		self.assertLastMessageEquals(self.nate_id, "Try either 'new game white' or 'new game black'")
+
 	def test_cannot_start_new_game_without_context(self):
 		self.handle_message(self.chad_id, 'New game white')
 		self.assertLastMessageEquals(self.chad_id, "You aren't playing against anyone (Use command 'play against <name>')")

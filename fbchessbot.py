@@ -158,10 +158,10 @@ def handle_message(sender, message):
 		# handle_help(sender, message) or
 		# handle_undo(sender, message) or
 		# handle_register(sender, message) or
-		handle_play(sender, message) or
-		handle_new(sender, message) or
-		handle_pgn(sender, message) or
-		handle_resign(sender, message) or
+		# handle_play(sender, message) or
+		# handle_new(sender, message) or
+		# handle_pgn(sender, message) or
+		# handle_resign(sender, message) or
 		handle_move(sender, message)
 	)
 
@@ -229,7 +229,6 @@ def undo(sender, game):
 
 @command(r'my name is (\S*)')
 def register(sender, nickname):
-	print('calling from register: ', nickname)
 	if len(nickname) > 32:
 		send_message(sender, 'That nickname is too long (Try 32 or less characters)')
 
@@ -270,14 +269,9 @@ def register(sender, nickname):
 # 	else:
 # 		return False
 
-
-def handle_play(sender, message):
+@command(r'play against (\S*)')
+def play_against(sender, nickname):
 	playerid = int(sender)
-	m = re.match(r'^\s*play\s+against\s+([a-z]+[0-9]*)$', message, re.IGNORECASE)
-	if not m:
-		return False
-
-	nickname = m.groups()[0]
 	opponentid = db.id_from_nickname(nickname)
 	if opponentid:
 		opponent_opponent_context = db.get_opponent_context(opponentid)
@@ -290,50 +284,87 @@ def handle_play(sender, message):
 	else:
 		send_message(sender, f"No player named '{nickname}'")
 
-	return True
 
+# def handle_play(sender, message):
+# 	playerid = int(sender)
+# 	m = re.match(r'^\s*play\s+against\s+([a-z]+[0-9]*)$', message, re.IGNORECASE)
+# 	if not m:
+# 		return False
 
-def handle_new(sender, message):
-	m = re.match(r'^new game (white|black)$', message, re.IGNORECASE)
-	if m:
-		opponentid = db.get_opponent_context(sender)
-		if not opponentid:
-			send_message(sender, "You aren't playing against anyone (Use command 'play against <name>')")
-			return True
-		color = m.groups()[0].lower()
-		if color == 'white':
-			whiteplayer, blackplayer = sender, opponentid
-		else:
-			whiteplayer, blackplayer = opponentid, sender
-		nickname = db.nickname_from_id(sender)
-		db.create_new_game(whiteplayer, blackplayer)
-		send_message(opponentid, f'{nickname} started a new game')
-		g = db.get_active_gameII(sender)
-		show_game_to_both(g)
-		return True
-	return False
+# 	nickname = m.groups()[0]
+# 	opponentid = db.id_from_nickname(nickname)
+# 	if opponentid:
+# 		opponent_opponent_context = db.get_opponent_context(opponentid)
+# 		if not opponent_opponent_context:
+# 			sender_nickname = db.nickname_from_id(sender)
+# 			db.set_opponent_context(opponentid, sender)
+# 			send_message(opponentid, f'You are now playing against {sender_nickname}')
+# 		db.set_opponent_context(sender, opponentid)
+# 		send_message(sender, f'You are now playing against {nickname}')
+# 	else:
+# 		send_message(sender, f"No player named '{nickname}'")
 
+# 	return True
 
-def handle_pgn(sender, message):
-	if re.match(r'^\s*pgn\s*$', message, re.IGNORECASE):
-		# TODO switch to using the new method
-		game = db.get_active_game_OBSOLETE(sender)
-		send_pgn(sender, game)
-		return True
+@command(r'new game (\S*)')
+def new_game(sender, color):
+	color = color.lower()
+	if color not in ['white', 'black']:
+		send_message(sender, "Try either 'new game white' or 'new game black'")
+		return
+	opponentid = db.get_opponent_context(sender)
+	if not opponentid:
+		send_message(sender, "You aren't playing against anyone (Use command 'play against <name>')")
+		return
+	if color == 'white':
+		whiteplayer, blackplayer = sender, opponentid
 	else:
-		return False
+		whiteplayer, blackplayer = opponentid, sender
+	nickname = db.nickname_from_id(sender)
+	db.create_new_game(whiteplayer, blackplayer)
+	send_message(opponentid, f'{nickname} started a new game')
+	g = db.get_active_gameII(sender)
+	show_game_to_both(g)
 
 
-def handle_resign(sender, message):
-	sender = int(sender)
-	if not re.match(r'^\s*resign\s*$', message, re.IGNORECASE):
-		return False
+# def handle_new(sender, message):
+# 	m = re.match(r'^new game (white|black)$', message, re.IGNORECASE)
+# 	if m:
+# 		opponentid = db.get_opponent_context(sender)
+# 		if not opponentid:
+# 			send_message(sender, "You aren't playing against anyone (Use command 'play against <name>')")
+# 			return True
+# 		color = m.groups()[0].lower()
+# 		if color == 'white':
+# 			whiteplayer, blackplayer = sender, opponentid
+# 		else:
+# 			whiteplayer, blackplayer = opponentid, sender
+# 		nickname = db.nickname_from_id(sender)
+# 		db.create_new_game(whiteplayer, blackplayer)
+# 		send_message(opponentid, f'{nickname} started a new game')
+# 		g = db.get_active_gameII(sender)
+# 		show_game_to_both(g)
+# 		return True
+# 	return False
 
+@command
+def pgn(sender):
 	game = db.get_active_gameII(sender)
-	if not game:
-		send_message(sender, 'You have no active games')
-		return True
+	send_pgn(sender, game)
 
+# def handle_pgn(sender, message):
+# 	if re.match(r'^\s*pgn\s*$', message, re.IGNORECASE):
+# 		# TODO switch to using the new method
+# 		game = db.get_active_game_OBSOLETE(sender)
+# 		send_pgn(sender, game)
+# 		return True
+# 	else:
+# 		return False
+
+@command
+@require_game
+def resign(sender, game):
+	sender = int(sender)
 	outcome = BLACK_WINS if sender == game.whiteplayer.id else WHITE_WINS
 	db.set_outcome(game, outcome)
 	opponentid = game.blackplayer.id if sender == game.whiteplayer.id else game.whiteplayer.id
@@ -341,7 +372,25 @@ def handle_resign(sender, message):
 	opponent_nickname = db.nickname_from_id(opponentid)
 	send_message(game.whiteplayer.id, f'{sender_nickname} resigns. {opponent_nickname} wins!')
 	send_message(game.blackplayer.id, f'{sender_nickname} resigns. {opponent_nickname} wins!')
-	return True
+
+# def handle_resign(sender, message):
+# 	sender = int(sender)
+# 	if not re.match(r'^\s*resign\s*$', message, re.IGNORECASE):
+# 		return False
+
+# 	game = db.get_active_gameII(sender)
+# 	if not game:
+# 		send_message(sender, 'You have no active games')
+# 		return True
+
+# 	outcome = BLACK_WINS if sender == game.whiteplayer.id else WHITE_WINS
+# 	db.set_outcome(game, outcome)
+# 	opponentid = game.blackplayer.id if sender == game.whiteplayer.id else game.whiteplayer.id
+# 	sender_nickname = db.nickname_from_id(sender)
+# 	opponent_nickname = db.nickname_from_id(opponentid)
+# 	send_message(game.whiteplayer.id, f'{sender_nickname} resigns. {opponent_nickname} wins!')
+# 	send_message(game.blackplayer.id, f'{sender_nickname} resigns. {opponent_nickname} wins!')
+# 	return True
 
 
 def handle_move(sender, message):
