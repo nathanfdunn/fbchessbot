@@ -42,7 +42,7 @@ class CustomAssertions:
 		recipient = str(recipient)
 		messages = sent_messages[recipient]
 		if not messages:
-			raise AssertionError(f'No messages for {recipient}. Some for {[recipient for recipient in sent_messages if sent_messages[recipient]]}')
+			raise AssertionError(f'No messages for {recipient}. Some for {[recipient for recipient in sent_messages if sent_messages[recipient]]}{sent_messages}')
 		last_message = messages[target_index]
 		# This only works because we're multiply inheriting from unittest.TestCase as well
 		self.assertEqual(last_message, text)
@@ -198,7 +198,9 @@ class TestRegistration(BaseTest):
 
 		with self.subTest(nickname='too long and special chars'):
 			self.handle_message(self.nate_id, 'my name is jerryfrandeskiemandersonfrancansolophenofocus#')
-			self.assertLastMessageEquals(self.nate_id, 'Nickname must match regex [a-z]+[0-9]*')
+			# Changing behavior of this edge case to make code cleaner
+			# self.assertLastMessageEquals(self.nate_id, 'Nickname must match regex [a-z]+[0-9]*')
+			self.assertLastMessageEquals(self.nate_id, 'That nickname is too long (Try 32 or less characters)')
 
 # Also need to check if there are already games active
 class TestOpponentContext(BaseTest):
@@ -421,6 +423,13 @@ class TestUndo(GamePlayTest):
 		self.handle_message(self.izzy_id, 'undo', expected_replies=1)
 		self.assertLastMessageEquals(self.izzy_id, 'You have no active games')
 
+	def test_redundant_undo_request(self):
+		self.handle_message(self.nate_id, 'e4', expected_replies=None)
+		self.handle_message(self.nate_id, 'undo', expected_replies=None)
+		clear_mocks()
+		self.handle_message(self.nate_id, 'undo', expected_replies=1)
+		self.assertLastMessageEquals(self.nate_id, 'You have already requested an undo')
+
 	@unittest.expectedFailure
 	def test_cannot_undo_without_active_gameII(self):
 		self.handle_message(self.izzy_id, 'Play against Chad', expected_replies=None)
@@ -487,9 +496,9 @@ class TestMiscellaneous(GamePlayTest):
 			self.assertLastGameRepEquals(self.nate_id, 'rnbqkbnr-pppppppp-8-8-8-8-PPPPPPPP-RNBQKBNR')
 			self.assertLastMessageEquals(self.nate_id, 'White to move')
 
-	@unittest.skip
 	def test_help(self):
-		pass
+		self.handle_message(self.nate_id, 'help')
+		self.assertLastMessageEquals(self.nate_id, 'Help text coming soon...')
 
 	@unittest.skip
 	def test_pgn(self):

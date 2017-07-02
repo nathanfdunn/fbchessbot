@@ -76,6 +76,9 @@ class Game:
 		else:
 			return playerid == self.blackplayer.id
 
+	def is_active_color(self, color):
+		return self.board.turn == color
+
 	def get_opponent(self, playerid):
 		playerid = int(playerid)
 		if self.blackplayer.id == playerid:

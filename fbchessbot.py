@@ -19,6 +19,9 @@ except ModuleNotFoundError:
 VERIFY_TOKEN = os.environ['VERIFY_TOKEN']
 PAGE_ACCESS_TOKEN = os.environ['PAGE_ACCESS_TOKEN']
 
+WHITE = 1
+BLACK = 0
+
 # Outcome codes
 WHITE_WINS = 1
 BLACK_WINS = 2
@@ -103,84 +106,169 @@ def messages():
 
 	return 'ok'
 
+def command(regex_or_func):
+	if type(regex_or_func) is str:
+		# Convention that regex args = they need a capture group
+		regex = '^' + regex_or_func.replace(' ', r'\s+') + '$'
+		def decorator(func):
+			@functools.wraps(func)
+			def wrapper(sender, message):
+				m = re.match(regex, message.strip(), re.IGNORECASE)
+				if not m:
+					return False
+				func(sender, m.groups()[0])
+				return True
+			commands.append(wrapper)
+			return wrapper
+
+		return decorator
+	else:
+		# Convention that directly wrapping = they only need senderid
+		regex = '^' + regex_or_func.__name__ + '$'
+		@functools.wraps(regex_or_func)
+		def wrapper(sender, message):
+			m = re.match(regex, message.strip(), re.IGNORECASE)
+			if not m:
+				return False
+			regex_or_func(sender)
+			return True
+		commands.append(wrapper)
+		return wrapper
+
+def require_game(func):
+	@functools.wraps(func)
+	def wrapper(sender):
+		game = db.get_active_gameII(sender)
+		# TODO logic for if no active games with a specific person, etc.
+		if not game:
+			send_message(sender, 'You have no active games')
+		else:
+			func(sender, game)
+	return wrapper
+
+commands = []
 
 def handle_message(sender, message):
-	(handle_show(sender, message)
-		or handle_help(sender, message)
-		or handle_undo(sender, message)
-		or handle_register(sender, message)
-		or handle_play(sender, message)
-		or handle_new(sender, message)
-		or handle_pgn(sender, message)
-		or handle_resign(sender, message)
-		or handle_move(sender, message)
+	for func in commands:
+		if func(sender, message):
+			return
+
+	(
+		# handle_show(sender, message) or
+		# handle_help(sender, message) or
+		# handle_undo(sender, message) or
+		# handle_register(sender, message) or
+		handle_play(sender, message) or
+		handle_new(sender, message) or
+		handle_pgn(sender, message) or
+		handle_resign(sender, message) or
+		handle_move(sender, message)
 	)
 
-
-def handle_show(sender, message):
-	if re.match(r'^\s*show\s*$', message, re.IGNORECASE):
-		game = db.get_active_gameII(sender)
-		send_game_rep(sender, game, game.whiteplayer.id == int(sender))
-		active = 'White' if game.board.turn else 'Black'
-		send_message(sender, active + ' to move')
-		return True
-	return False
-
-
-def handle_help(sender, message):
-	if re.match(r'^\s*help\s*$', message, re.IGNORECASE):
-		send_message(sender, 'Help text coming soon...')
-		return True
+@command
+@require_game
+def show(sender, game):
+	send_game_rep(sender, game)
+	if game.is_active_color(WHITE):
+		send_message(sender, 'White to move')
 	else:
-		return False
+		send_message(sender, 'Black to move')
 
+@command
+def help(sender):
+	send_message(sender, 'Help text coming soon...')
 
-def handle_undo(sender, message):
-	if not re.match(r'^\s*undo\s*$', message, re.IGNORECASE):
-		return False
-	sender = int(sender)
-	g = db.get_active_gameII(sender)
-	if not g:
-		send_message(sender, 'You have no active games')
-		return True
+@command
+@require_game
+def undo(sender, game):
+	g=game
 	if g.undo:
 		if g.is_active_player(sender):
 			g.board.pop()
 			db.set_undo_flag(g, False)
 			db.save_game(g)
-			opponentid = g.blackplayer.id if g.whiteplayer.id == sender else g.whiteplayer.id
+			opponentid = g.get_opponent(sender).id
+			# opponentid = g.blackplayer.id if g.whiteplayer.id == sender else g.whiteplayer.id
 			nickname = db.nickname_from_id(sender)
 			send_message(opponentid, f'{nickname} accepted your undo request')
 			show_game_to_both(g)
 		else:
 			send_message(sender, 'You have already requested an undo')
 	else:
-		opponentid = g.blackplayer.id if g.whiteplayer.id == sender else g.whiteplayer.id
+		# opponentid = g.blackplayer.id if g.whiteplayer.id == sender else g.whiteplayer.id
+		opponentid = g.get_opponent(sender).id
 		nickname = db.nickname_from_id(sender)
 		db.set_undo_flag(g, True)
 		send_message(opponentid, f'{nickname} has requested an undo')
-	return True
 
+# def handle_undo(sender, message):
+# 	if not re.match(r'^\s*undo\s*$', message, re.IGNORECASE):
+# 		return False
+# 	sender = int(sender)
+# 	g = db.get_active_gameII(sender)
+# 	if not g:
+# 		send_message(sender, 'You have no active games')
+# 		return True
+# 	if g.undo:
+# 		if g.is_active_player(sender):
+# 			g.board.pop()
+# 			db.set_undo_flag(g, False)
+# 			db.save_game(g)
+# 			opponentid = g.blackplayer.id if g.whiteplayer.id == sender else g.whiteplayer.id
+# 			nickname = db.nickname_from_id(sender)
+# 			send_message(opponentid, f'{nickname} accepted your undo request')
+# 			show_game_to_both(g)
+# 		else:
+# 			send_message(sender, 'You have already requested an undo')
+# 	else:
+# 		opponentid = g.blackplayer.id if g.whiteplayer.id == sender else g.whiteplayer.id
+# 		nickname = db.nickname_from_id(sender)
+# 		db.set_undo_flag(g, True)
+# 		send_message(opponentid, f'{nickname} has requested an undo')
+# 	return True
 
-def handle_register(sender, message):
-	m = re.match(r'^\s*my\s+name\s+is\s+([a-z]+[0-9]*)\s*$', message, re.IGNORECASE)
-	if m:
-		nickname = m.groups()[0]
-		if len(nickname) > 32:
-			send_message(sender, 'That nickname is too long (Try 32 or less characters)')
-			return True
+@command(r'my name is (\S*)')
+def register(sender, nickname):
+	print('calling from register: ', nickname)
+	if len(nickname) > 32:
+		send_message(sender, 'That nickname is too long (Try 32 or less characters)')
+
+	elif re.match(r'^[a-z]+[0-9]*$', nickname, re.IGNORECASE):
+		# nickname = m.groups()[0]
 		user_is_new = db.set_nickname(sender, nickname)
 		if user_is_new:
 			send_message(sender, f'Nice to meet you {nickname}!')
 		else:
 			send_message(sender, f'I set your nickname to {nickname}')
 
-		return True
-	elif re.match(r'^\s*my\s+name\s+is\s+', message, re.IGNORECASE):
-		send_message(sender, 'Nickname must match regex [a-z]+[0-9]*')
-		return True
 	else:
-		return False
+		send_message(sender, r'Nickname must match regex [a-z]+[0-9]*')
+
+	# elif re.match(r'^\s*my\s+name\s+is\s+', message, re.IGNORECASE):
+	# 	send_message(sender, 'Nickname must match regex [a-z]+[0-9]*')
+	# 	return True
+	# else:
+	# 	return False
+
+# def handle_register(sender, message):
+# 	m = re.match(r'^\s*my\s+name\s+is\s+([a-z]+[0-9]*)\s*$', message, re.IGNORECASE)
+# 	if m:
+# 		nickname = m.groups()[0]
+# 		if len(nickname) > 32:
+# 			send_message(sender, 'That nickname is too long (Try 32 or less characters)')
+# 			return True
+# 		user_is_new = db.set_nickname(sender, nickname)
+# 		if user_is_new:
+# 			send_message(sender, f'Nice to meet you {nickname}!')
+# 		else:
+# 			send_message(sender, f'I set your nickname to {nickname}')
+
+# 		return True
+# 	elif re.match(r'^\s*my\s+name\s+is\s+', message, re.IGNORECASE):
+# 		send_message(sender, 'Nickname must match regex [a-z]+[0-9]*')
+# 		return True
+# 	else:
+# 		return False
 
 
 def handle_play(sender, message):
