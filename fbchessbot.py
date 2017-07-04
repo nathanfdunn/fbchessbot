@@ -90,7 +90,7 @@ def messages():
 		return 'ok'
 
 
-def command(regex_or_func, regex_opts=re.IGNORECASE):
+def command(regex_or_func, regex_opts=re.IGNORECASE | re.DOTALL):
 	if type(regex_or_func) is str:
 		# Convention that regex args => they need a capture group
 		original_regex = '^' + regex_or_func.replace(' ', r'\s+') + '$'
@@ -204,7 +204,7 @@ def register(sender, nickname):
 	# 	send_message(sender, r'Nickname must match regex [a-z]+[0-9]*')
 
 
-@command(r'play against (.*)', re.IGNORECASE | re.DOTALL)
+@command(r'play against (.*)')
 def play_against(sender, nickname):
 	opponentid = db.id_from_nickname(nickname)
 	if opponentid:
@@ -224,7 +224,7 @@ def new_game(sender, color):
 	if color is None:
 		send_message(sender, "Try either 'new game white' or 'new game black'")
 		return
-	color = color.lower()
+	# color = color.lower()
 	# if color not in ['white', 'black']:
 	# 	send_message(sender, "Try either 'new game white' or 'new game black'")
 	# 	return
@@ -232,7 +232,7 @@ def new_game(sender, color):
 	if not opponentid:
 		send_message(sender, "You aren't playing against anyone (Use command 'play against <name>')")
 		return
-	if color == 'white':
+	if color.lower() == 'white':
 		whiteplayer, blackplayer = sender, opponentid
 	else:
 		whiteplayer, blackplayer = opponentid, sender
