@@ -199,8 +199,9 @@ class TestRegistration(BaseTest):
 		with self.subTest(nickname='too long and special chars'):
 			self.handle_message(self.nate_id, 'my name is jerryfrandeskiemandersonfrancansolophenofocus#')
 			# Changing behavior of this edge case to make code cleaner
-			# self.assertLastMessageEquals(self.nate_id, 'Nickname must match regex [a-z]+[0-9]*')
-			self.assertLastMessageEquals(self.nate_id, 'That nickname is too long (Try 32 or less characters)')
+			# self.assertLastMessageEquals(self.nate_id, 'That nickname is too long (Try 32 or less characters)')
+			# Changing behavior back for similar reasons
+			self.assertLastMessageEquals(self.nate_id, 'Nickname must match regex [a-z]+[0-9]*')
 
 # Also need to check if there are already games active
 class TestOpponentContext(BaseTest):

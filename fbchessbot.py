@@ -89,22 +89,29 @@ def messages():
 	finally:
 		return 'ok'
 
-def command(regex_or_func):
+
+def command(regex_or_func, regex_opts=re.IGNORECASE):
 	if type(regex_or_func) is str:
-		# Convention that regex args = they need a capture group
-		regex = '^' + regex_or_func.replace(' ', r'\s+') + '$'
+		# Convention that regex args => they need a capture group
+		original_regex = '^' + regex_or_func.replace(' ', r'\s+') + '$'
+		lenient_regex = re.sub(r'\(.*\)', r'(.*)', original_regex)
 		def decorator(func):
 			@functools.wraps(func)
 			def wrapper(sender, message):
-				m = re.match(regex, message.strip(), re.IGNORECASE)
+				m = re.match(lenient_regex, message.strip(), re.IGNORECASE | re.DOTALL)
 				if not m:
 					return False
-				func(sender, m.groups()[0])
+				m = re.match(original_regex, message.strip(), regex_opts)
+				if m:
+					func(sender, m.groups()[0])
+				else:
+					func(sender, None)
 				return True
 			commands.append(wrapper)
 			return wrapper
 
 		return decorator
+
 	else:
 		# Convention that directly wrapping = they only need senderid
 		regex = '^' + regex_or_func.__name__ + '$'
@@ -172,23 +179,32 @@ def undo(player, opponent, game):
 		send_message(opponent.id, f'{player.nickname} has requested an undo')
 
 
-@command(r'my name is (\S*)')
+@command(r'my name is ([a-z]+[0-9]*)')
 def register(sender, nickname):
+	if nickname is None:
+		send_message(sender, r'Nickname must match regex [a-z]+[0-9]*')
+		return
 	if len(nickname) > 32:
 		send_message(sender, 'That nickname is too long (Try 32 or less characters)')
-
-	elif re.match(r'^[a-z]+[0-9]*$', nickname, re.IGNORECASE):
-		user_is_new = db.set_nickname(sender, nickname)
-		if user_is_new:
-			send_message(sender, f'Nice to meet you {nickname}!')
-		else:
-			send_message(sender, f'I set your nickname to {nickname}')
-
+		return
+	user_is_new = db.set_nickname(sender, nickname)
+	if user_is_new:
+		send_message(sender, f'Nice to meet you {nickname}!')
 	else:
-		send_message(sender, r'Nickname must match regex [a-z]+[0-9]*')
+		send_message(sender, f'I set your nickname to {nickname}')
+
+	# elif re.match(r'^[a-z]+[0-9]*$', nickname, re.IGNORECASE):
+	# 	user_is_new = db.set_nickname(sender, nickname)
+	# 	if user_is_new:
+	# 		send_message(sender, f'Nice to meet you {nickname}!')
+	# 	else:
+	# 		send_message(sender, f'I set your nickname to {nickname}')
+
+	# else:
+	# 	send_message(sender, r'Nickname must match regex [a-z]+[0-9]*')
 
 
-@command(r'play against (\S*)')
+@command(r'play against (.*)', re.IGNORECASE | re.DOTALL)
 def play_against(sender, nickname):
 	opponentid = db.id_from_nickname(nickname)
 	if opponentid:
@@ -203,12 +219,15 @@ def play_against(sender, nickname):
 		send_message(sender, f"No player named '{nickname}'")
 
 
-@command(r'new game (\S*)')
+@command(r'new game (white|black)')
 def new_game(sender, color):
-	color = color.lower()
-	if color not in ['white', 'black']:
+	if color is None:
 		send_message(sender, "Try either 'new game white' or 'new game black'")
 		return
+	color = color.lower()
+	# if color not in ['white', 'black']:
+	# 	send_message(sender, "Try either 'new game white' or 'new game black'")
+	# 	return
 	opponentid = db.get_opponent_context(sender)
 	if not opponentid:
 		send_message(sender, "You aren't playing against anyone (Use command 'play against <name>')")
