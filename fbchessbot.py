@@ -128,15 +128,22 @@ def command(regex_or_func, regex_opts=re.IGNORECASE | re.DOTALL):
 def require_game(func):
 	@functools.wraps(func)
 	def wrapper(sender):
-		game = db.get_active_gameII(sender)
+		player, opponent, game = db.get_context(sender)
+		# game = db.get_active_gameII(sender)
 		# TODO logic for if no active games with a specific person, etc.
 		if not game:
-			send_message(sender, 'You have no active games')
-		else:
-			if sender == game.whiteplayer.id:
-				func(game.whiteplayer, game.blackplayer, game)
+			if opponent is None:
+				print('opponent::::', opponent)
+				send_message(sender, 'You have no active games')
 			else:
-				func(game.blackplayer, game.whiteplayer, game)
+				print('opponent::::', opponent)
+				send_message(sender, f'You have no active games with {opponent.nickname}')
+		else:
+			# if sender == game.whiteplayer.id:
+			# 	func(game.whiteplayer, game.blackplayer, game)
+			# else:
+			# 	func(game.blackplayer, game.whiteplayer, game)
+			func(player, opponent, game)
 	return wrapper
 
 commands = []
@@ -175,8 +182,14 @@ def undo(player, opponent, game):
 		else:
 			send_message(player.id, 'You have already requested an undo')
 	else:
-		db.set_undo_flag(game, True)
-		send_message(opponent.id, f'{player.nickname} has requested an undo')
+		if game.is_active_player(player.id):
+			send_message(player.id, "You can't request an undo when it is your turn")
+		else:
+			if game.board.stack:
+				db.set_undo_flag(game, True)
+				send_message(opponent.id, f'{player.nickname} has requested an undo')
+			else:
+				send_message(player.id, "You haven't made any moves to undo")
 
 
 @command(r'my name is ([a-z]+[0-9]*)')
@@ -187,6 +200,15 @@ def register(sender, nickname):
 	if len(nickname) > 32:
 		send_message(sender, 'That nickname is too long (Try 32 or less characters)')
 		return
+
+	user_id = db.id_from_nickname(nickname)
+	if user_id is not None:
+		if user_id == sender:
+			send_message(sender, f'Your nickname is already {nickname}')
+		else:
+			send_message(sender, 'That name is taken. Please choose another')
+		return
+
 	user_is_new = db.set_nickname(sender, nickname)
 	if user_is_new:
 		send_message(sender, f'Nice to meet you {nickname}!')
@@ -206,8 +228,11 @@ def register(sender, nickname):
 
 @command(r'play against (.*)')
 def play_against(sender, nickname):
+	current_opponent = db.get_opponent_context(sender)
 	opponentid = db.id_from_nickname(nickname)
-	if opponentid:
+	if current_opponent == opponentid != None:
+		send_message(sender, f'You are already playing against {nickname}')
+	elif opponentid:
 		opponent_opponent_context = db.get_opponent_context(opponentid)
 		if not opponent_opponent_context:
 			sender_nickname = db.nickname_from_id(sender)
@@ -224,22 +249,31 @@ def new_game(sender, color):
 	if color is None:
 		send_message(sender, "Try either 'new game white' or 'new game black'")
 		return
+
+	player, opponent, game = db.get_context(sender)
+	if opponent is None:
+		send_message(sender, "You aren't playing against anyone (Use command 'play against <name>')")
+		return
+
+	if game is not None:
+		send_message(sender, f'You already have an active game with {opponent.nickname}')
+		return
 	# color = color.lower()
 	# if color not in ['white', 'black']:
 	# 	send_message(sender, "Try either 'new game white' or 'new game black'")
 	# 	return
-	opponentid = db.get_opponent_context(sender)
-	if not opponentid:
-		send_message(sender, "You aren't playing against anyone (Use command 'play against <name>')")
-		return
+	# opponentid = db.get_opponent_context(sender)
+	# if not opponentid:
+		# send_message(sender, "You aren't playing against anyone (Use command 'play against <name>')")
+		# return
 	if color.lower() == 'white':
-		whiteplayer, blackplayer = sender, opponentid
+		whiteplayer, blackplayer = sender, opponent.id
 	else:
-		whiteplayer, blackplayer = opponentid, sender
+		whiteplayer, blackplayer = opponent.id, sender
 	nickname = db.nickname_from_id(sender)
 	db.create_new_game(whiteplayer, blackplayer)
-	send_message(opponentid, f'{nickname} started a new game')
-	g = db.get_active_gameII(sender)
+	send_message(opponent.id, f'{nickname} started a new game')
+	_, _, g = db.get_context(sender)
 	show_game_to_both(g)
 
 
@@ -262,17 +296,20 @@ def handle_move(sender, message):
 	game = db.get_active_gameII(sender)
 	if not game:
 		send_message(sender, 'You have no active games')
-		return True
+		# return True
 
 	if not game.is_active_player(sender):
 		send_message(sender, "It isn't your turn")
-		return True
+		# return True
 
 	try:
 		game.board.parse_san(message)
-	except ValueError:
-		send_message(sender, 'That is an invalid move')
-		return True
+	except ValueError as e:
+		if 'ambiguous' in str(e):
+			send_message(sender, 'That move could refer to two or more pieces')
+		else:
+			send_message(sender, 'That is an invalid move')
+		# return True
 
 	nickname = db.nickname_from_id(sender)
 	game.board.push_san(message)

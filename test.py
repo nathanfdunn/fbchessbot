@@ -126,14 +126,12 @@ class TestRegistration(BaseTest):
 				self.assertEqual(cur.fetchone()[0], 3)
 
 	# Coming soon!
-	@unittest.expectedFailure
+	# @unittest.expectedFailure
 	def test_name_cannot_collide_when_registering(self):
 		self.handle_message(self.nate_id, 'My name is Nate')
 		with self.subTest():
 			self.handle_message(self.chad_id, 'My name is Nate')
 			self.assertLastMessageEquals(self.chad_id, 'That name is taken. Please choose another')
-
-		with self.subTest():
 			with self.db.cursor() as cur:
 				cur.execute('SELECT COUNT(*) FROM player WHERE id = %s', [self.chad_id])
 				self.assertEqual(cur.fetchone()[0], 0)
@@ -141,14 +139,13 @@ class TestRegistration(BaseTest):
 		with self.subTest():
 			self.handle_message(self.jess_id, 'My name is nate')
 			self.assertLastMessageEquals(self.jess_id, 'That name is taken. Please choose another')
-		
-		with self.subTest():
 			with self.db.cursor() as cur:
 				cur.execute('SELECT COUNT(*) FROM player WHERE id = %s', [self.jess_id])
 				self.assertEqual(cur.fetchone()[0], 0)
 
 	def test_can_rename(self):
 		self.handle_message(self.nate_id, 'my name is Nate', expected_replies=None)
+
 		with self.subTest(case='first rename'):
 			self.handle_message(self.nate_id, 'my name is jonathan')
 			self.assertLastMessageEquals(self.nate_id, 'I set your nickname to jonathan')
@@ -160,10 +157,10 @@ class TestRegistration(BaseTest):
 
 		with self.subTest(case='second rename'):
 			self.handle_message(self.nate_id, 'my name is jonathan')
-			self.assertLastMessageEquals(self.nate_id, 'I set your nickname to jonathan')
+			self.assertLastMessageEquals(self.nate_id, 'Your nickname is already jonathan')
 
 	# Coming soon!
-	@unittest.expectedFailure
+	# @unittest.expectedFailure
 	def test_name_cannot_collide_when_renaming(self):
 		self.handle_message(self.nate_id, 'My name is Nate', expected_replies=None)
 		self.handle_message(self.chad_id, 'My name is Chad', expected_replies=None)
@@ -239,7 +236,7 @@ class TestOpponentContext(BaseTest):
 		self.assertEqual(self.db.get_opponent_context(self.nate_id), self.jess_id)
 		self.assertEqual(self.db.get_opponent_context(self.jess_id), self.izzy_id)
 
-	@unittest.expectedFailure
+	# @unittest.expectedFailure
 	def test_notifies_on_redundant_context_setting(self):
 		self.handle_message(self.nate_id, 'Play against Chad', expected_replies=2)
 		self.handle_message(self.nate_id, 'Play against Chad', expected_replies=1)
@@ -284,7 +281,7 @@ class TestGameInitiation(BaseTest):
 		self.assertLastMessageEquals(self.jess_id, 'Nate started a new game')
 		self.assertLastGameRepEquals(self.jess_id, 'rnbqkbnr-pppppppp-8-8-8-8-PPPPPPPP-RNBQKBNR')
 
-	@unittest.expectedFailure
+	# @unittest.expectedFailure
 	def test_cannot_start_new_in_middle_of_game(self):
 		self.handle_message(self.nate_id, 'New game white', expected_replies=None)
 		clear_mocks()
@@ -357,7 +354,7 @@ class TestGamePlay(GamePlayTest):
 	def test_can_castle(self):
 		pass
 
-	@unittest.expectedFailure
+	# @unittest.expectedFailure
 	def test_cannot_make_ambiguous_moveII(self):
 		self.perform_moves(self.nate_id, self.jess_id, [('e4', 'f5'), ('c4', 'd5')])
 		self.handle_message(self.nate_id, 'd5', expected_replies=1)
@@ -403,7 +400,6 @@ class TestUndo(GamePlayTest):
 			cur.execute('SELECT undo FROM games')
 			self.assertEqual(cur.fetchone()[0], False)
 
-	@unittest.expectedFailure
 	def test_cannot_undo_on_your_turn(self):
 		self.handle_message(self.nate_id, 'e4', expected_replies=None)
 		self.handle_message(self.jess_id, 'undo', expected_replies=1)
@@ -412,7 +408,6 @@ class TestUndo(GamePlayTest):
 			cur.execute('SELECT undo FROM games')
 			self.assertEqual(cur.fetchone()[0], False)
 
-	@unittest.expectedFailure
 	def test_cannot_undo_before_first_move(self):
 		self.handle_message(self.jess_id, 'undo', expected_replies=1)
 		self.assertLastMessageEquals(self.jess_id, "You haven't made any moves to undo")
@@ -435,11 +430,15 @@ class TestUndo(GamePlayTest):
 		self.handle_message(self.nate_id, 'undo', expected_replies=1)
 		self.assertLastMessageEquals(self.nate_id, 'You have already requested an undo')
 
-	@unittest.expectedFailure
 	def test_cannot_undo_without_active_gameII(self):
-		self.handle_message(self.izzy_id, 'Play against Chad', expected_replies=None)
-		self.handle_message(self.izzy_id, 'undo', expected_replies=1)
-		self.assertLastMessageEquals(self.izzy_id, 'You have no active games with Chad')
+		# Fastest way to kill the game
+		# exit()
+		self.handle_message(self.nate_id, 'resign', expected_replies=None)
+		self.handle_message(self.nate_id, 'undo', expected_replies=1)
+		self.assertLastMessageEquals(self.nate_id, 'You have no active games with Jess')
+		# self.handle_message(self.izzy_id, 'Play against Chad', expected_replies=None)
+		# self.handle_message(self.izzy_id, 'undo', expected_replies=1)
+		# self.assertLastMessageEquals(self.izzy_id, 'You have no active games with Chad')
 
 
 class TestGameFinish(GamePlayTest):
@@ -542,6 +541,7 @@ if __name__ == '__main__':
 if False:
 	self = BaseTest()
 	self.setUpClass()
+	self.db.delete_all()
 	self.handle_message(self.nate_id, 'My name is Nate', expected_replies=None)
 	self.handle_message(self.chad_id, 'My name is Chad', expected_replies=None)
 	self.handle_message(self.jess_id, 'My name is Jess', expected_replies=None)
@@ -549,7 +549,7 @@ if False:
 	# Just so we can be sure these two are playing each other
 	self.handle_message(self.izzy_id, 'Play against Jess', expected_replies=None)
 	self.handle_message(self.jess_id, 'Play against Izzy', expected_replies=None)
-	self.handle_message(self.izzy_id, 'new game white')
-	self.handle_message(self.izzy_id, 'new game black')
-	self.handle_message(self.izzy_id, 'new game white')
-	self.handle_message(self.izzy_id, 'new game black')
+	# self.handle_message(self.izzy_id, 'new game white')
+	# self.handle_message(self.izzy_id, 'new game black')
+	# self.handle_message(self.izzy_id, 'new game white')
+	# self.handle_message(self.izzy_id, 'new game black')

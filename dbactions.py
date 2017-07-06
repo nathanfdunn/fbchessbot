@@ -215,6 +215,56 @@ class DB:
 
 			return Game(row[6], row[7], row[8], whiteplayer, blackplayer, row[11], row[12])
 
+	# Returns specified Player, opponent Player, active Game
+	def get_context(self, player_id):
+		with self.cursor() as cur:
+			cur.execute("""
+				SELECT
+					p.id, p.nickname, p.opponent_context,
+					o.id, o.nickname, o.opponent_context,
+					g.id, g.board, g.active, g.whiteplayer, g.blackplayer, g.undo, g.outcome
+				FROM player p
+				LEFT JOIN player o ON p.opponent_context = o.id
+				LEFT JOIN games g ON (
+						(g.whiteplayer = p.id AND g.blackplayer = o.id) 
+						OR 
+						(g.blackplayer = p.id AND g.whiteplayer = o.id)
+					)
+					AND (g.active = TRUE)
+				WHERE p.id = %s
+				""", [player_id])
+			row = cur.fetchone()
+			if row is None:						# user isn't even registered
+				return None, None, None
+
+			if row[9] is None:					# Indicates there is no game
+				player_color = None 			# so they have no color
+				opponent_color = None
+			else:
+				player_color = (player_id == row[9])
+				opponent_color = (player_id != row[9])
+
+			player = Player(row[0], row[1], row[2], player_color)
+			if row[3] is None:
+				opponent = None
+			else:
+				opponent = Player(row[3], row[4], row[5], opponent_color)
+
+			if row[9] == player_id:          # if g.whiteplayer == playerid
+				whiteplayer = player
+				blackplayer = opponent
+			else:
+				whiteplayer = opponent
+				blackplayer = player
+
+			if row[6] is None:
+				game = None
+			else:
+				game = Game(row[6], row[7], row[8], whiteplayer, blackplayer, row[11], row[12])
+
+			return player, opponent, game
+
+
 	# def get_active_game(self, playerid):
 	# 	with self.cursor() as cur:
 	# 		cur.execute("SELECT opponent_context FROM player WHERE id = %s", [playerid])
