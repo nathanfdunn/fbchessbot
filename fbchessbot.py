@@ -296,11 +296,11 @@ def handle_move(sender, message):
 	game = db.get_active_gameII(sender)
 	if not game:
 		send_message(sender, 'You have no active games')
-		# return True
+		return
 
 	if not game.is_active_player(sender):
 		send_message(sender, "It isn't your turn")
-		# return True
+		return
 
 	try:
 		game.board.parse_san(message)
@@ -309,7 +309,7 @@ def handle_move(sender, message):
 			send_message(sender, 'That move could refer to two or more pieces')
 		else:
 			send_message(sender, 'That is an invalid move')
-		# return True
+		return
 
 	nickname = db.nickname_from_id(sender)
 	game.board.push_san(message)

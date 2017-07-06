@@ -337,7 +337,7 @@ class TestGamePlay(GamePlayTest):
 	def test_cannot_make_ambiguous_move(self):
 		self.perform_moves(self.nate_id, self.jess_id, [('e4', 'f5'), ('c4', 'd5')])
 		self.handle_message(self.nate_id, 'd5', expected_replies=1)
-		self.assertLastMessageEquals(self.nate_id, 'That is an invalid move')
+		self.assertLastMessageEquals(self.nate_id, 'That move could refer to two or more pieces')
 
 	def test_can_qualify_ambiguous_move(self):
 		pass
@@ -353,12 +353,6 @@ class TestGamePlay(GamePlayTest):
 
 	def test_can_castle(self):
 		pass
-
-	# @unittest.expectedFailure
-	def test_cannot_make_ambiguous_moveII(self):
-		self.perform_moves(self.nate_id, self.jess_id, [('e4', 'f5'), ('c4', 'd5')])
-		self.handle_message(self.nate_id, 'd5', expected_replies=1)
-		self.assertLastMessageEquals(self.nate_id, 'That move could refer to two or more pieces')
 
 	def test_check(self):
 		self.perform_moves(self.nate_id, self.jess_id, [('e4', 'f5')])
