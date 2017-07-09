@@ -292,7 +292,7 @@ def resign(player, opponent, game):
 def normalize_move(game, move):
 	if not move:
 		return move
-	# Resolve crazy edge case - side with bishop move if ambiguous
+	# Resolve crazy edge case - go with bishop move if ambiguous
 	if move[0] == 'B':
 		bishopMove = 'B' + move[1:]
 		pawnMove = 'b' + move[1:]
@@ -325,17 +325,16 @@ def normalize_move(game, move):
 	move = move.replace('0', 'O')
 	# P at beginning must be pawn move
 	move = move.lstrip('P')
-
 	return move
 
 
 def handle_move(sender, message):
-	game = db.get_active_gameII(sender)
+	player, opponent, game = db.get_context(sender)
 	if not game:
 		send_message(sender, 'You have no active games')
 		return
 
-	if not game.is_active_player(sender):
+	if not game.is_active_player(player.id):
 		send_message(sender, "It isn't your turn")
 		return
 
@@ -345,35 +344,29 @@ def handle_move(sender, message):
 		game.board.parse_san(move)
 	except ValueError as e:
 		if 'ambiguous' in str(e):
-			send_message(sender, 'That move could refer to two or more pieces')
+			send_message(player.id, 'That move could refer to two or more pieces')
 		else:
-			send_message(sender, 'That is an invalid move')
+			send_message(player.id, 'That is an invalid move')
 		return
 
-	nickname = db.nickname_from_id(sender)
 	game.board.push_san(move)
 	db.save_game(game)
 	db.set_undo_flag(game, False)
 
+	send_game_rep(player.id, game, player.color)
+	send_message(opponent.id, f'{player.nickname} played {move}')
+	send_game_rep(opponent.id, game, opponent.color)
+
 	opponentid = game.blackplayer.id if game.whiteplayer.id == sender else game.whiteplayer.id
 
-	if sender == game.whiteplayer.id:
-		send_game_rep(sender, game)
-		send_message(opponentid, f'{nickname} played {message}')
-		send_game_rep(opponentid, game, False)
-	else:
-		send_game_rep(sender, game, False)
-		send_message(opponentid, f'{nickname} played {message}')
-		send_game_rep(opponentid, game)
-	
 	if game.board.is_checkmate():
 		outcome = WHITE_WINS if sender == game.whiteplayer.id else BLACK_WINS
 		db.set_outcome(game, outcome)
-		send_message(sender, f'Checkmate! {nickname} wins!')
-		send_message(opponentid, f'Checkmate! {nickname} wins!')
+		send_message(player.id, f'Checkmate! {player.nickname} wins!')
+		send_message(opponent.id, f'Checkmate! {player.nickname} wins!')
 	elif game.board.is_check():
-		send_message(sender, 'Check!')
-		send_message(opponentid, 'Check!')
+		send_message(player.id, 'Check!')
+		send_message(opponent.id, 'Check!')
 
 
 def send_pgn(recipient, game):
