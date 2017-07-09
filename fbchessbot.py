@@ -133,10 +133,8 @@ def require_game(func):
 		# TODO logic for if no active games with a specific person, etc.
 		if not game:
 			if opponent is None:
-				print('opponent::::', opponent)
 				send_message(sender, 'You have no active games')
 			else:
-				print('opponent::::', opponent)
 				send_message(sender, f'You have no active games with {opponent.nickname}')
 		else:
 			# if sender == game.whiteplayer.id:
@@ -282,7 +280,6 @@ def pgn(sender):
 	game = db.get_active_gameII(sender)
 	send_pgn(sender, game)
 
-
 @command
 @require_game
 def resign(player, opponent, game):
@@ -290,6 +287,46 @@ def resign(player, opponent, game):
 	db.set_outcome(game, outcome)
 	send_message(player.id, f'{player.nickname} resigns. {opponent.nickname} wins!')
 	send_message(opponent.id, f'{player.nickname} resigns. {opponent.nickname} wins!')
+
+
+def normalize_move(game, move):
+	if not move:
+		return move
+	# Resolve crazy edge case - side with bishop move if ambiguous
+	if move[0] == 'B':
+		bishopMove = 'B' + move[1:]
+		pawnMove = 'b' + move[1:]
+		try:
+			game.parse_san(bishopMove)
+			bishopWorks = True
+		except ValueError:
+			bishopWorks = False
+		try:
+			game.parse_san(pawnMove)
+			pawnWorks = True
+		except ValueError:
+			pawnWorks = False
+
+		if bishopWorks and pawnWorks:
+			return bishopMove
+		elif bishopWorks:
+			return bishopMove
+		elif pawnWorks:
+			return pawnMove
+
+	if move[0] in 'NRBKQP':
+		move = move[0] + move[1:].lower()
+	else:
+		move = move.lower()
+
+	# Allow case-insensitive castling
+	move = move.replace('o', 'O')
+	# 0 only valid in castling
+	move = move.replace('0', 'O')
+	# P at beginning must be pawn move
+	move = move.lstrip('P')
+
+	return move
 
 
 def handle_move(sender, message):
@@ -302,8 +339,10 @@ def handle_move(sender, message):
 		send_message(sender, "It isn't your turn")
 		return
 
+	move = normalize_move(game, message)
+
 	try:
-		game.board.parse_san(message)
+		game.board.parse_san(move)
 	except ValueError as e:
 		if 'ambiguous' in str(e):
 			send_message(sender, 'That move could refer to two or more pieces')
@@ -312,7 +351,7 @@ def handle_move(sender, message):
 		return
 
 	nickname = db.nickname_from_id(sender)
-	game.board.push_san(message)
+	game.board.push_san(move)
 	db.save_game(game)
 	db.set_undo_flag(game, False)
 

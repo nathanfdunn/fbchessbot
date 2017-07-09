@@ -5,6 +5,7 @@ if not sys.flags.debug:
 from collections import defaultdict
 import unittest
 
+import chess
 import psycopg2
 
 import dbactions
@@ -301,6 +302,25 @@ class GamePlayTest(BaseTest):
 		self.handle_message(self.nate_id, 'New game white')
 		clear_mocks()
 
+	def set_position(self, board, extras=' w KQkq - 0 1'):
+		"Sets the state of the game between Nate and Jess to the specified position"
+		_, _, game = self.db.get_context(self.nate_id)
+		game.board = board_from_str(board, extras)
+		self.db.save_game(game)
+
+
+def board_from_str(board, extras):
+	board = board.strip().split('\n')
+	rows = []
+	for row in board:
+		row = row.strip().replace(' ', '')
+		for i in range(8, 0, -1):
+			row = row.replace('.'*i, str(i))
+		rows.append(row)
+	fen = '/'.join(rows) + extras
+	return chess.Board(fen)
+
+
 class TestGamePlay(GamePlayTest):
 	def test_basic_moves(self):
 		self.handle_message(self.nate_id, 'e4', expected_replies=3)
@@ -339,20 +359,76 @@ class TestGamePlay(GamePlayTest):
 		self.handle_message(self.nate_id, 'd5', expected_replies=1)
 		self.assertLastMessageEquals(self.nate_id, 'That move could refer to two or more pieces')
 
+	@unittest.skip
 	def test_can_qualify_ambiguous_move(self):
 		pass
 
+	@unittest.skip
 	def test_can_qualify_unambiguous_move(self):
 		pass
 
+	# @unittest.skip
 	def test_can_make_case_insensitive_pawn_move(self):
-		pass
+		self.handle_message(self.nate_id, 'E4', expected_replies=3)
+		self.assertLastGameRepEquals(self.nate_id, 'rnbqkbnr-pppppppp-8-8-4P3-8-PPPP1PPP-RNBQKBNR')
+
+	def test_can_qualify_pawn_move_piece(self):
+		self.handle_message(self.nate_id, 'Pe4', expected_replies=3)
+		self.assertLastGameRepEquals(self.nate_id, 'rnbqkbnr-pppppppp-8-8-4P3-8-PPPP1PPP-RNBQKBNR')
 
 	def test_can_promote(self):
-		pass
+		board = '''
+				. . . . . . . .
+				. k . . P . . .
+				. . . . . . . .
+				. . . . . . . .
+				. . . . . . . .
+				. . . . . . . .
+				. . . . . . . .
+				. K . . . . . .
+				'''
+		with self.subTest('Verbose'):
+			self.set_position(board)
+			self.handle_message(self.nate_id, 'e8=Q', expected_replies=3)
+			self.assertLastGameRepEquals(self.nate_id, '4Q3-1k6-8-8-8-8-8-1K6')
 
+		with self.subTest('Verbose (lower)'):
+			self.set_position(board)
+			self.handle_message(self.nate_id, 'e8=q', expected_replies=3)
+			self.assertLastGameRepEquals(self.nate_id, '4Q3-1k6-8-8-8-8-8-1K6')
+
+		with self.subTest('Minimal'):
+			self.set_position(board)
+			self.handle_message(self.nate_id, 'e8Q', expected_replies=3)
+			self.assertLastGameRepEquals(self.nate_id, '4Q3-1k6-8-8-8-8-8-1K6')
+
+		with self.subTest('Minimal (lower)'):
+			self.set_position(board)
+			self.handle_message(self.nate_id, 'e8q', expected_replies=3)
+			self.assertLastGameRepEquals(self.nate_id, '4Q3-1k6-8-8-8-8-8-1K6')
+
+
+	
 	def test_can_castle(self):
-		pass
+		board = '''
+				r . . . k . . r
+				. . . . . . . .
+				. . . . . . . .
+				. . . . . . . .
+				. . . . . . . .
+				. . . . . . . .
+				. . . . . . . .
+				R . . . K . . R
+				'''
+		with self.subTest('Long - Ohs'):
+			self.set_position(board)
+			self.handle_message(self.nate_id, 'O-O-O', expected_replies=3)
+			self.assertLastGameRepEquals(self.nate_id, 'r3k2r-8-8-8-8-8-8-2KR3R')
+
+		with self.subTest('Long - 0s'):
+			self.set_position(board)
+			self.handle_message(self.nate_id, '0-0-0', expected_replies=3)
+			self.assertLastGameRepEquals(self.nate_id, 'r3k2r-8-8-8-8-8-8-2KR3R')
 
 	def test_check(self):
 		self.perform_moves(self.nate_id, self.jess_id, [('e4', 'f5')])
@@ -520,10 +596,9 @@ class TestMiscellaneous(GamePlayTest):
 	# 	pass
 
 	# def test_can_register(self):
-	# 	print('blah')
-
+	# 	pass
 	# def test_should_fail(self):
-	# 	print('a')
+	# 	pass
 
 # def main():
 	# set_up_total()

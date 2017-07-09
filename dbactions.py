@@ -310,16 +310,12 @@ class DB:
 		with self.cursor() as cur:
 			cur.execute('SELECT COUNT(*) FROM player WHERE id = %s', [playerid])
 			user_exists = cur.fetchone()[0]
-			# user_exists = self.user_is_registered(sender)
-			# if cur.fetchone():    # user already exists
-			print('user_exists', user_exists)
+
 			if user_exists:
-				# print('user existed')
 				cur.execute('UPDATE player SET nickname = %s WHERE id = %s', [nickname, playerid])
 				cur.connection.commit()
 				return False
 			else:               # user does not exist
-				# print('user does not exist')
 				cur.execute('INSERT INTO player (id, nickname) VALUES (%s, %s)', [playerid, nickname])
 				cur.connection.commit()
 				return True
