@@ -156,6 +156,58 @@ def migration7():
 		""")
 	cur.connection.commit()
 
+@register_migration
+def migration8():
+	op()
+	cur.execute("""
+		ALTER TABLE 
+		""")
+
 def apply_all_migrations():
 	for m in migrations:
 		m()
+
+def pickle_backup():
+	op()
+	cur.execute("""
+		SELECT id, description FROM outcome
+		""")
+	outcomes = list(cur)
+
+	cur.execute("""
+		SELECT id, board, active, whiteplayer, blackplayer, undo, outcome FROM games
+		""")
+	games = list(cur)
+
+	better = []
+	for game in games:
+		game = game[0], bytes(game[1]), *game[2:]
+		better.append(game)
+
+	cur.execute("""
+		SELECT id, nickname, opponent_context FROM player
+		""")
+	players = list(cur)
+
+	save = {'outcome': outcomes, 'games': better, 'players': players}
+	import pickle
+	with open('backup.pkl', 'wb') as f:
+		pickle.dump(save, f)
+
+def unpickle_backup():
+	import pickle
+	with open('backup.pkl', 'rb') as f:
+		save = pickle.load(f)
+	outcomes = save['outcome']
+	players = save['players']
+	games = save['games']
+	op()
+	cur.execute('SET CONSTRAINTS ALL DEFERRED')
+
+	cur.executemany("""
+		INSERT INTO player (id, nickname, opponent_context) VALUES (%s, %s, %s)
+		""", players)
+	cur.executemany("""
+		INSERT INTO games (id, board, active, whiteplayer, blackplayer, undo, outcome) VALUES (%s, %s, %s, %s, %s, %s, %s)
+		""", games)
+	cur.connection.commit()

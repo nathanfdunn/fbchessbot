@@ -126,8 +126,6 @@ class TestRegistration(BaseTest):
 				cur.execute('SELECT COUNT(*) FROM player')
 				self.assertEqual(cur.fetchone()[0], 3)
 
-	# Coming soon!
-	# @unittest.expectedFailure
 	def test_name_cannot_collide_when_registering(self):
 		self.handle_message(self.nate_id, 'My name is Nate')
 		with self.subTest():
@@ -160,8 +158,6 @@ class TestRegistration(BaseTest):
 			self.handle_message(self.nate_id, 'my name is jonathan')
 			self.assertLastMessageEquals(self.nate_id, 'Your nickname is already jonathan')
 
-	# Coming soon!
-	# @unittest.expectedFailure
 	def test_name_cannot_collide_when_renaming(self):
 		self.handle_message(self.nate_id, 'My name is Nate', expected_replies=None)
 		self.handle_message(self.chad_id, 'My name is Chad', expected_replies=None)
@@ -237,7 +233,6 @@ class TestOpponentContext(BaseTest):
 		self.assertEqual(self.db.get_opponent_context(self.nate_id), self.jess_id)
 		self.assertEqual(self.db.get_opponent_context(self.jess_id), self.izzy_id)
 
-	# @unittest.expectedFailure
 	def test_notifies_on_redundant_context_setting(self):
 		self.handle_message(self.nate_id, 'Play against Chad', expected_replies=2)
 		self.handle_message(self.nate_id, 'Play against Chad', expected_replies=1)
@@ -282,7 +277,6 @@ class TestGameInitiation(BaseTest):
 		self.assertLastMessageEquals(self.jess_id, 'Nate started a new game')
 		self.assertLastGameRepEquals(self.jess_id, 'rnbqkbnr-pppppppp-8-8-8-8-PPPPPPPP-RNBQKBNR')
 
-	# @unittest.expectedFailure
 	def test_cannot_start_new_in_middle_of_game(self):
 		self.handle_message(self.nate_id, 'New game white', expected_replies=None)
 		clear_mocks()
@@ -530,18 +524,17 @@ class TestGameFinish(GamePlayTest):
 				cur.execute('SELECT active FROM games')
 				self.assertEqual(cur.fetchone()[0], False)
 
-	# # @unittest.expectedFailure
-	# def test_checkmate_ends_game(self):
-	# 	self.perform_moves(self.nate_id, self.jess_id, [('f4', 'e5'), ('g4', 'Qh4')] )
-	# 	with self.subTest('Game is inactive'):
+	def test_checkmate_ends_game(self):
+		self.perform_moves(self.nate_id, self.jess_id, [('f4', 'e5'), ('g4', 'Qh4')] )
+		with self.subTest('Game is inactive'):
+			_, _, game = self.db.get_context(self.nate_id)
+			self.assertEqual(game, None)
 
-	# 	with self.subTest('Outcome is win for black'):
+		with self.subTest('Outcome is win for black'):
+			with self.db.cursor() as cur:
+				cur.execute('SELECT outcome FROM games')
+				self.assertEqual(cur.fetchone()[0], 2)
 
-	# 		with self.db.cursor() as cur:
-	# 			cur.execute('SELECT outcome FROM games')
-	# 			self.assertEqual(cur.fetchone()[0], False)
-
-	# @unittest.expectedFailure
 	def test_resign(self):
 		self.handle_message(self.nate_id, 'resign', expected_replies=2)
 		self.assertLastMessageEquals(self.nate_id, 'Nate resigns. Jess wins!')
@@ -581,27 +574,6 @@ class TestMiscellaneous(GamePlayTest):
 	@unittest.skip
 	def test_pgns(self):
 		pass
-	# def pass
-
-	# 	pass
-
-	# def test_can_
-
-		# with self.subTest(nickname)
-
-	# def test_can_self():
-	# 	pass
-
-	# def test_can_rename(self):
-	# 	pass
-
-	# def test_can_register(self):
-	# 	pass
-	# def test_should_fail(self):
-	# 	pass
-
-# def main():
-	# set_up_total()
 
 
 if __name__ == '__main__':
