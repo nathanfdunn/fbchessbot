@@ -176,7 +176,8 @@ def undo(player, opponent, game):
 			db.set_undo_flag(game, False)
 			db.save_game(game)
 			send_message(opponent.id, f'{player.nickname} accepted your undo request')
-			show_game_to_both(game)
+			send_game_rep(player.id, game, player.color)
+			send_game_rep(opponent.id, game, opponent.color)
 		else:
 			send_message(player.id, 'You have already requested an undo')
 	else:
@@ -256,14 +257,7 @@ def new_game(sender, color):
 	if game is not None:
 		send_message(sender, f'You already have an active game with {opponent.nickname}')
 		return
-	# color = color.lower()
-	# if color not in ['white', 'black']:
-	# 	send_message(sender, "Try either 'new game white' or 'new game black'")
-	# 	return
-	# opponentid = db.get_opponent_context(sender)
-	# if not opponentid:
-		# send_message(sender, "You aren't playing against anyone (Use command 'play against <name>')")
-		# return
+
 	if color.lower() == 'white':
 		whiteplayer, blackplayer = sender, opponent.id
 	else:
