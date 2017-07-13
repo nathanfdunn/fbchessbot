@@ -361,6 +361,20 @@ class TestGamePlay(GamePlayTest):
 	def test_can_qualify_unambiguous_move(self):
 		pass
 
+	def test_can_handle_bishop_edge_case(self):
+		board = '''
+		. . . . . . k .
+		. . . . . p p p
+		. . . . . . . .
+		. . . . . . . .
+		. . . . . . . .
+		. . . . . n . .
+		. . . . B . P .
+		. K . . . . . .
+		'''
+		self.set_position(board)
+		self.handle_message(self.nate_id, 'Bf3', expected_replies=3)
+
 	# @unittest.skip
 	def test_can_make_case_insensitive_pawn_move(self):
 		self.handle_message(self.nate_id, 'E4', expected_replies=3)
@@ -556,12 +570,19 @@ class TestGameFinish(GamePlayTest):
 
 class TestMiscellaneous(GamePlayTest):
 	def test_show(self):
-		# with self.subTest('Without game'):
-		# 	pass
-		with self.subTest('With game'):
-			self.handle_message(self.nate_id, 'show')
+		with self.subTest('Without game'):
+			self.handle_message(self.chad_id, 'show', expected_replies=1)
+			self.assertLastMessageEquals(self.chad_id, 'You have no active games')
+
+		with self.subTest('With game - White'):
+			self.handle_message(self.nate_id, 'show', expected_replies=2)
 			self.assertLastGameRepEquals(self.nate_id, 'rnbqkbnr-pppppppp-8-8-8-8-PPPPPPPP-RNBQKBNR')
 			self.assertLastMessageEquals(self.nate_id, 'White to move')
+
+		with self.subTest('With game - Black'):
+			self.handle_message(self.jess_id, 'show', expected_replies=2)
+			self.assertLastGameRepEquals(self.jess_id, 'RNBKQBNR-PPPPPPPP-8-8-8-8-pppppppp-rnbkqbnr')
+			self.assertLastMessageEquals(self.jess_id, 'White to move')
 
 	def test_help(self):
 		self.handle_message(self.nate_id, 'help')

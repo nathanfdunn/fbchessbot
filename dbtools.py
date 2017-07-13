@@ -8,6 +8,7 @@ try:
 except ModuleNotFoundError:
 	# Heroku has us covered
 	pass
+from dbactions import DB
 
 DATABASE_URL = os.environ['DATABASE_URL']
 

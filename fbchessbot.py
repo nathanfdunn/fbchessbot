@@ -155,7 +155,7 @@ def handle_message(sender, message):
 @command
 @require_game
 def show(player, opponent, game):
-	send_game_rep(player.id, game)
+	send_game_rep(player.id, game, player.color)
 	if game.is_active_color(WHITE):
 		send_message(player.id, 'White to move')
 	else:
@@ -291,12 +291,12 @@ def normalize_move(game, move):
 		bishopMove = 'B' + move[1:]
 		pawnMove = 'b' + move[1:]
 		try:
-			game.parse_san(bishopMove)
+			game.board.parse_san(bishopMove)
 			bishopWorks = True
 		except ValueError:
 			bishopWorks = False
 		try:
-			game.parse_san(pawnMove)
+			game.board.parse_san(pawnMove)
 			pawnWorks = True
 		except ValueError:
 			pawnWorks = False
