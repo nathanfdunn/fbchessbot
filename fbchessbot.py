@@ -59,11 +59,17 @@ def hello():
 
 @app.route('/webhook', methods=['GET'])
 def verify():
-	if request.args.get('hub.verify_token') == VERIFY_TOKEN:
-		return request.args.get('hub.challenge', '')
-	else:
-		return 'Error, wrong validation token'
-
+	failed = False
+	try:
+		if request.args.get('hub.verify_token') == VERIFY_TOKEN:
+			return request.args.get('hub.challenge', '')
+		else:
+			return 'Error, wrong validation token'
+	except Exception as e:
+		failed = True
+		print('Got an exception in verification?', str(e))
+	finally:
+		print('failure:', failed)
 
 def messaging_events(payload):
 	"""Generate tuples of (sender_id, message_text) from the
