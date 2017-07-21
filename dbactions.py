@@ -242,3 +242,9 @@ class DB:
 		with self.cursor() as cur:
 			cur.execute('UPDATE player SET opponent_context = %s WHERE id = %s', [opponentid, challengerid])
 			cur.connection.commit()
+
+	def user_is_registered(self, playerid):
+		with self.cursor() as cur:
+			cur.execute('SELECT id FROM player WHERE id = %s', [playerid])
+			result = cur.fetchone()
+			return result is not None

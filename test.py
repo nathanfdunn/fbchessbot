@@ -11,6 +11,8 @@ import psycopg2
 import dbactions
 import fbchessbot
 
+intro = "Hi! Why don't you introduce yourself? (say My name is <name>)"
+
 sent_messages = defaultdict(list)
 def mock_send_message(recipient, text):
 	recipient = recipient
@@ -212,18 +214,15 @@ class TestOpponentContext(BaseTest):
 		self.handle_message(self.jess_id, 'Play against Izzy', expected_replies=None)
 		clear_mocks()
 
-	# Fails so bad it screws up the rest of the tests
-	@unittest.skip
 	def test_unregistered_cannot_set_opponent_context(self):
 		self.handle_message(839293, 'Play against Nate')
-		self.assertLastMessageEquals(839293, 'What is your name?')
+		self.assertLastMessageEquals(839293, intro)
 
 	def test_opponent_context_automatically_set_on_newbie(self):
 		self.handle_message(self.nate_id, 'Play against Chad', expected_replies=2)
 		self.assertLastMessageEquals(self.chad_id, 'You are now playing against Nate')
 		self.assertLastMessageEquals(self.nate_id, 'You are now playing against Chad')
 
-		# Yeah...still need to convert over to int ids
 		self.assertEqual(self.db.get_opponent_context(self.nate_id), self.chad_id)
 		self.assertEqual(self.db.get_opponent_context(self.chad_id), self.nate_id)
 
@@ -289,6 +288,8 @@ class GamePlayTest(BaseTest):
 		self.db.delete_all()
 		self.handle_message(self.nate_id, 'My name is Nate', expected_replies=None)
 		self.handle_message(self.jess_id, 'My name is Jess', expected_replies=None)
+		self.handle_message(self.chad_id, 'My name is Chad', expected_replies=None)
+		# Izzy never registers
 
 		self.handle_message(self.nate_id, 'Play against Jess', expected_replies=None)
 		self.handle_message(self.jess_id, 'Play against Nate', expected_replies=None)
@@ -494,12 +495,16 @@ class TestUndo(GamePlayTest):
 			self.assertEqual(cur.fetchone()[0], False)
 
 	def test_cannot_undo_without_active_game(self):
-		self.handle_message(self.izzy_id, 'undo', expected_replies=1)
-		self.assertLastMessageEquals(self.izzy_id, 'You have no active games')
-		
-		self.handle_message(self.izzy_id, 'Play against Chad', expected_replies=None)
-		self.handle_message(self.izzy_id, 'undo', expected_replies=1)
-		self.assertLastMessageEquals(self.izzy_id, 'You have no active games')
+		with self.subTest('Unregistered'):
+			self.handle_message(self.izzy_id, 'undo', expected_replies=1)
+			self.assertLastMessageEquals(self.izzy_id, intro)
+
+		with self.subTest('Registered...?'):
+			# self.handle_message(self.nate_id, 'Play against Chad', expected_replies=None)
+			# raise Exception(self.db.user_is_registered(self.nate_id))
+			# raise Exception(self.db.get_context(self.nate_id))
+			self.handle_message(self.chad_id, 'undo', expected_replies=1)
+			self.assertLastMessageEquals(self.chad_id, 'You have no active games')
 
 	def test_redundant_undo_request(self):
 		self.handle_message(self.nate_id, 'e4', expected_replies=None)
@@ -570,6 +575,10 @@ class TestGameFinish(GamePlayTest):
 
 class TestMiscellaneous(GamePlayTest):
 	def test_show(self):
+		with self.subTest('Unregistered'):
+			self.handle_message(self.izzy_id, 'show', expected_replies=1)
+			self.assertLastMessageEquals(self.izzy_id, intro)
+
 		with self.subTest('Without game'):
 			self.handle_message(self.chad_id, 'show', expected_replies=1)
 			self.assertLastMessageEquals(self.chad_id, 'You have no active games')

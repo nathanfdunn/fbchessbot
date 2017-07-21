@@ -150,13 +150,19 @@ def require_game(func):
 			func(player, opponent, game)
 	return wrapper
 
-commands = []
-def handle_message(sender, message):
-	for func in commands:
-		if func(sender, message):
-			return
-	handle_move(sender, message)
+def allow_anonymous(func):
+	anonymous_commands.append(func)
+	return func
 
+commands = []
+anonymous_commands = []
+def handle_message(sender, message):
+	if db.user_is_registered(sender):
+		if not any(func(sender, message) for func in commands):
+			handle_move(sender, message)
+	else:
+		if not any(func(sender, message) for func in anonymous_commands):
+			send_message(sender, "Hi! Why don't you introduce yourself? (say My name is <name>)")
 
 @command
 @require_game
@@ -167,7 +173,7 @@ def show(player, opponent, game):
 	else:
 		send_message(player.id, 'Black to move')
 
-
+@allow_anonymous
 @command
 def help(sender):
 	send_message(sender, 'Help text coming soon...')
@@ -197,6 +203,7 @@ def undo(player, opponent, game):
 				send_message(player.id, "You haven't made any moves to undo")
 
 
+@allow_anonymous
 @command(r'my name is ([a-z]+[0-9]*)')
 def register(sender, nickname):
 	if nickname is None:
@@ -219,16 +226,6 @@ def register(sender, nickname):
 		send_message(sender, f'Nice to meet you {nickname}!')
 	else:
 		send_message(sender, f'I set your nickname to {nickname}')
-
-	# elif re.match(r'^[a-z]+[0-9]*$', nickname, re.IGNORECASE):
-	# 	user_is_new = db.set_nickname(sender, nickname)
-	# 	if user_is_new:
-	# 		send_message(sender, f'Nice to meet you {nickname}!')
-	# 	else:
-	# 		send_message(sender, f'I set your nickname to {nickname}')
-
-	# else:
-	# 	send_message(sender, r'Nickname must match regex [a-z]+[0-9]*')
 
 
 @command(r'play against (.*)')
@@ -280,6 +277,7 @@ def pgn(sender):
 	game = db.get_active_gameII(sender)
 	send_pgn(sender, game)
 
+
 @command
 @require_game
 def resign(player, opponent, game):
@@ -319,7 +317,7 @@ def normalize_move(game, move):
 	else:
 		move = move.lower()
 
-	# Allow case-insensitive castling
+	# Fix the .lower() for castling (will allow case-insensitive castling)
 	move = move.replace('o', 'O')
 	# 0 only valid in castling
 	move = move.replace('0', 'O')
