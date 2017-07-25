@@ -605,6 +605,17 @@ class TestMiscellaneous(GamePlayTest):
 	def test_pgns(self):
 		pass
 
+	@unittest.skip
+	def test_stats(self):
+		pass
+		# self.handle_message(self.nate_id, 'stats', expected_replies=1)
+
+	@unittest.skip
+	def test_status(self):
+		pass
+		# self.handle_message(self.nate_id, 'status', expected_replies=1)
+
+
 
 if __name__ == '__main__':
 	unittest.main()

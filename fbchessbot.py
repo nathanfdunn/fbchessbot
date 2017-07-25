@@ -287,6 +287,15 @@ def resign(player, opponent, game):
 	send_message(opponent.id, f'{player.nickname} resigns. {opponent.nickname} wins!')
 
 
+@command
+def status(sender):
+	pass
+
+@command
+def stats(sender):
+	pass
+
+
 def normalize_move(game, move):
 	if not move:
 		return move

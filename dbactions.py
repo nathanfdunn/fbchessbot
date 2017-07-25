@@ -99,6 +99,12 @@ class DB:
 	def cursor(self):
 		return self.conn.cursor()
 
+	# def get_stats(self, playerid):
+	# 	pass
+
+	# def get_status(self, playerid):
+	# 	pass
+
 	# Just saves the serialized board
 	def save_game(self, game):
 		with self.cursor() as cur:
