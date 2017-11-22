@@ -103,6 +103,16 @@ class BaseTest(unittest.TestCase, CustomAssertions):
 		if clear:
 			clear_mocks()
 
+class TestUnregisteredResponses(BaseTest):
+	def setUp(self):
+		self.db.delete_all()
+		clear_mocks()
+
+	def test_does_display_intro(self):
+		newb = 12345678910
+		self.handle_message(newb, 'Hi', expected_replies=1)
+		self.assertLastMessageEquals(newb, intro)
+
 class TestRegistration(BaseTest):
 	expected_replies = 1
 

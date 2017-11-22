@@ -76,6 +76,7 @@ def messaging_events(payload):
 	provided payload.
 	"""
 	data = json.loads(payload)
+	print('message(s) received:\n', payload)
 	events = data["entry"][0]["messaging"]
 	for event in events:
 		if "message" in event and "text" in event["message"]:
@@ -423,6 +424,7 @@ def show_game_to_both(game):
 
 
 def send_message(recipient, text):
+	print('sending message: ', recipient, text)
 	r = requests.post('https://graph.facebook.com/v2.9/me/messages',
 		params={'access_token': PAGE_ACCESS_TOKEN},
 		data=json.dumps({
@@ -433,6 +435,8 @@ def send_message(recipient, text):
 	)
 	if r.status_code != requests.codes.ok:
 		print('Error while sending message:', r.text)
+	else:
+		print('supposedly message was good.')
 
 
 def create_board_image(board):
