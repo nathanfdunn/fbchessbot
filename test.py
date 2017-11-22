@@ -344,6 +344,25 @@ class TestGamePlay(GamePlayTest):
 		self.assertLastGameRepEquals(self.nate_id, 'rnbqkbnr-pppp1ppp-8-4p3-4P3-5N2-PPPP1PPP-RNBQKB1R')
 		self.assertLastGameRepEquals(self.jess_id, 'R1BKQBNR-PPP1PPPP-2N5-3P4-3p4-8-ppp1pppp-rnbkqbnr')
 
+	def test_case_sensitivity(self):
+		self.handle_message(self.nate_id, 'E4', expected_replies=3)
+		self.assertLastMessageEquals(self.jess_id, 'Nate played e4')
+		self.assertLastGameRepEquals(self.nate_id, 'rnbqkbnr-pppppppp-8-8-4P3-8-PPPP1PPP-RNBQKBNR')
+		self.assertLastGameRepEquals(self.jess_id, 'RNBKQBNR-PPP1PPPP-8-3P4-8-8-pppppppp-rnbkqbnr')
+
+		self.handle_message(self.jess_id, 'E5', expected_replies=3)
+		self.assertLastMessageEquals(self.nate_id, 'Jess played e5')
+		# Now note the target_index's - handle_move doesn't use show_to_both
+		self.assertLastGameRepEquals(self.nate_id, 'rnbqkbnr-pppp1ppp-8-4p3-4P3-8-PPPP1PPP-RNBQKBNR')
+		self.assertLastGameRepEquals(self.jess_id, 'RNBKQBNR-PPP1PPPP-8-3P4-3p4-8-ppp1pppp-rnbkqbnr')
+
+		self.handle_message(self.nate_id, 'nf3', expected_replies=3)
+		self.assertLastMessageEquals(self.jess_id, 'Nate played Nf3')
+		self.assertLastGameRepEquals(self.nate_id, 'rnbqkbnr-pppp1ppp-8-4p3-4P3-5N2-PPPP1PPP-RNBQKB1R')
+		self.assertLastGameRepEquals(self.jess_id, 'R1BKQBNR-PPP1PPPP-2N5-3P4-3p4-8-ppp1pppp-rnbkqbnr')
+
+
+
 	def test_cannot_make_impossible_move(self):
 		self.handle_message(self.nate_id, 'e5', expected_replies=1)
 		self.assertLastMessageEquals(self.nate_id, 'That is an invalid move')

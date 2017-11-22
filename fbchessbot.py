@@ -300,6 +300,9 @@ def stats(sender):
 def normalize_move(game, move):
 	if not move:
 		return move
+
+	move = move.upper()
+	
 	# Resolve crazy edge case - go with bishop move if ambiguous
 	if move[0] == 'B':
 		bishopMove = 'B' + move[1:]
