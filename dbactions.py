@@ -5,6 +5,7 @@ from urllib.parse import urlparse
 
 import chess
 import psycopg2
+import psycopg2.extras
 
 try:
 	import env
@@ -106,7 +107,8 @@ class DB:
 			cur.connection.commit()
 
 	def cursor(self):
-		return self.conn.cursor()
+		# return self.conn.cursor()
+		return self.conn.cursor(cursor_factory=psycopg2.extras.NamedTupleCursor)
 
 	# def get_stats(self, playerid):
 	# 	pass
@@ -159,9 +161,9 @@ class DB:
 		with self.cursor() as cur:
 			cur.execute("""
 				SELECT
-					p.id, p.nickname, p.opponent_context,
-					o.id, o.nickname, o.opponent_context,
-					g.id, g.board, g.active, g.whiteplayer, g.blackplayer, g.undo, g.outcome
+					p.id AS playerid, p.nickname AS player_nickname, p.opponent_context AS player_opponent_id,
+					o.id AS opponentid, o.nickname AS opponent_nickname, o.opponent_context AS opponent_opponent_id,
+					g.id AS gameid, g.board, g.active, g.whiteplayer, g.blackplayer, g.undo, g.outcome
 				FROM player p
 				LEFT JOIN player o ON p.opponent_context = o.id
 				LEFT JOIN games g ON (
