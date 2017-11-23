@@ -1,5 +1,6 @@
 import functools
 import json
+import inspect
 import os
 import re
 
@@ -30,6 +31,9 @@ DRAW = 3
 db = dbactions.DB()
 
 app = Flask(__name__)
+
+def nicknamevalid(nickname):
+	return re.fullmatch(r'[')
 
 @app.route('/image/<fen>', methods=['GET'])
 def board_image(fen):
@@ -96,68 +100,11 @@ def messages():
 	finally:
 		return 'ok'
 
-
-def command(regex_or_func, regex_opts=re.IGNORECASE | re.DOTALL):
-	if type(regex_or_func) is str:
-		# Convention that regex args => they need a capture group
-		original_regex = '^' + regex_or_func.replace(' ', r'\s+') + '$'
-		lenient_regex = re.sub(r'\(.*\)', r'(.*)', original_regex)
-		def decorator(func):
-			@functools.wraps(func)
-			def wrapper(sender, message):
-				m = re.match(lenient_regex, message.strip(), re.IGNORECASE | re.DOTALL)
-				if not m:
-					return False
-				m = re.match(original_regex, message.strip(), regex_opts)
-				if m:
-					func(sender, m.groups()[0])
-				else:
-					func(sender, None)
-				return True
-			commands.append(wrapper)
-			return wrapper
-
-		return decorator
-
-	else:
-		# Convention that directly wrapping = they only need senderid
-		regex = '^' + regex_or_func.__name__ + '$'
-		@functools.wraps(regex_or_func)
-		def wrapper(sender, message):
-			m = re.match(regex, message.strip(), re.IGNORECASE)
-			if not m:
-				return False
-			regex_or_func(sender)
-			return True
-		commands.append(wrapper)
-		return wrapper
-
-def require_game(func):
-	@functools.wraps(func)
-	def wrapper(sender):
-		player, opponent, game = db.get_context(sender)
-		# game = db.get_active_gameII(sender)
-		# TODO logic for if no active games with a specific person, etc.
-		if not game:
-			if opponent is None:
-				send_message(sender, 'You have no active games')
-			else:
-				send_message(sender, f'You have no active games with {opponent.nickname}')
-		else:
-			# if sender == game.whiteplayer.id:
-			# 	func(game.whiteplayer, game.blackplayer, game)
-			# else:
-			# 	func(game.blackplayer, game.whiteplayer, game)
-			func(player, opponent, game)
-	return wrapper
-
-def allow_anonymous(func):
-	anonymous_commands.append(func)
-	return func
-
 commands = []
 anonymous_commands = []
 def handle_message(sender, message):
+	message = message.strip()
+	# print('sender', sender, 'message', message)
 	if db.user_is_registered(sender):
 		if not any(func(sender, message) for func in commands):
 			handle_move(sender, message)
@@ -165,8 +112,72 @@ def handle_message(sender, message):
 		if not any(func(sender, message) for func in anonymous_commands):
 			send_message(sender, "Hi! Why don't you introduce yourself? (say My name is <name>)")
 
-@command
-@require_game
+def command(*, require_game=False, allow_anonymous=False, require_person=False, receive_args=False):
+	def decorator(func):
+		parms = set(inspect.signature(func).parameters.keys())
+		# Validate underlying arguments
+		# if not require_game and not require_person and 'sender' not in parms:
+		# 	raise Exception('Regular commands must accept the "sender" parameter')
+		if require_game and not parms >= {'player', 'opponent', 'game'}:
+			raise Exception('Missing parameters required to receive game context')
+		elif require_person and 'other' not in parms:
+			raise Exception('Missing parameters required to receive other player')
+
+		regex = func.__name__.replace('_', r'\s+')
+		if require_person or receive_args:
+			regex += r'\s+(.*)'
+
+		@functools.wraps(func)
+		def wrapper(sender, message):
+			kwargs = {}
+			if 'sender' in parms:
+				kwargs['sender'] = sender
+			m = re.fullmatch(regex, message, flags=re.IGNORECASE | re.DOTALL)
+			if not m:
+				return False
+			if require_person:
+				nickname = m.group(1).strip()
+				if not re.fullmatch(r'[A-Za-z_][A-Za-z0-9]{0,31}', nickname.strip()):
+					send_message(sender, 'That is an invalid screen name')
+					return True
+				else:
+					other_player = db.player_from_nickname(nickname)
+					if other_player is None:
+						send_message(sender, f'There is no player by the name {nickname}')
+						return True
+					else:
+						kwargs['other'] = other_player
+
+			if require_game:
+				player, opponent, game = db.get_context(sender)
+				if not game:
+					if opponent is None:
+						send_message(sender, 'You have no active games')
+						return True
+					else:
+						send_message(sender, f'You have no active games with {opponent.nickname}')
+						return True
+				else:
+					kwargs.update(player=player, opponent=opponent, game=game)
+
+			if receive_args:
+				func(m.group(1).strip(), **kwargs)
+			else:
+				func(**kwargs)
+
+			return True			# cuz it must have matched
+
+		if allow_anonymous:
+			anonymous_commands.append(wrapper)
+		
+		commands.append(wrapper)
+
+		return wrapper
+
+	return decorator
+
+
+@command(require_game=True)
 def show(player, opponent, game):
 	send_game_rep(player.id, game, player.color)
 	if game.is_active_color(WHITE):
@@ -174,14 +185,12 @@ def show(player, opponent, game):
 	else:
 		send_message(player.id, 'Black to move')
 
-@allow_anonymous
-@command
+@command(allow_anonymous=True)
 def help(sender):
 	send_message(sender, 'Help text coming soon...')
 
 
-@command
-@require_game
+@command(require_game=True)
 def undo(player, opponent, game):
 	if game.undo:
 		if game.is_active_player(player.id):
@@ -204,10 +213,10 @@ def undo(player, opponent, game):
 				send_message(player.id, "You haven't made any moves to undo")
 
 
-@allow_anonymous
-@command(r'my name is ([a-z]+[0-9]*)')
-def register(sender, nickname):
-	if nickname is None:
+@command(allow_anonymous=True, receive_args=True)
+def my_name_is(nickname, sender):
+	if not re.fullmatch(r'[a-z][a-z0-9]*', nickname, flags=re.IGNORECASE):
+		# TODO better error message
 		send_message(sender, r'Nickname must match regex [a-z]+[0-9]*')
 		return
 	if len(nickname) > 32:
@@ -229,8 +238,10 @@ def register(sender, nickname):
 		send_message(sender, f'I set your nickname to {nickname}')
 
 
-@command(r'play against (.*)')
-def play_against(sender, nickname):
+# @command(r'play against (.*)')
+@command(require_person=True)
+def play_against(sender, other):
+	nickname = other.nickname
 	current_opponent = db.get_opponent_context(sender)
 	opponentid = db.id_from_nickname(nickname)
 	if current_opponent == opponentid != None:
@@ -247,9 +258,9 @@ def play_against(sender, nickname):
 		send_message(sender, f"No player named '{nickname}'")
 
 
-@command(r'new game (white|black)')
-def new_game(sender, color):
-	if color is None:
+@command(receive_args=True)
+def new_game(color, sender):
+	if color.lower() not in ['black', 'white']:
 		send_message(sender, "Try either 'new game white' or 'new game black'")
 		return
 
@@ -273,14 +284,13 @@ def new_game(sender, color):
 	show_game_to_both(g)
 
 
-@command
+@command()
 def pgn(sender):
 	game = db.get_active_gameII(sender)
 	send_pgn(sender, game)
 
 
-@command
-@require_game
+@command(require_game=True)
 def resign(player, opponent, game):
 	outcome = BLACK_WINS if player.color == WHITE else WHITE_WINS
 	db.set_outcome(game, outcome)
@@ -288,13 +298,24 @@ def resign(player, opponent, game):
 	send_message(opponent.id, f'{player.nickname} resigns. {opponent.nickname} wins!')
 
 
-@command
+@command()
 def status(sender):
 	pass
 
-@command
+@command()
 def stats(sender):
 	pass
+
+# @command
+# @require_person
+# def block(sender, nickname):
+# 	pass
+
+# @command
+# @require_person
+# def unblock(sender, nickname):
+# 	pass
+
 
 
 def normalize_move(game, move):
@@ -302,7 +323,7 @@ def normalize_move(game, move):
 		return move
 
 	move = move.upper()
-	
+
 	# Resolve crazy edge case - go with bishop move if ambiguous
 	if move[0] == 'B':
 		bishopMove = 'B' + move[1:]
@@ -470,3 +491,72 @@ def create_board_image(board):
 
 if __name__ == '__main__':
 	app.run(host='0.0.0.0')
+
+
+# def command(regex_or_func, regex_opts=re.IGNORECASE | re.DOTALL):
+# 	if type(regex_or_func) is str:
+# 		regex = regex_or_func
+# 		# Convention that regex args => they need a capture group
+# 		original_regex = '^' + regex.replace(' ', r'\s+') + '$'
+# 		lenient_regex = re.sub(r'\(.*\)', r'(.*)', original_regex)
+# 		def decorator(func):
+# 			@functools.wraps(func)
+# 			def wrapper(sender, message):
+# 				m = re.match(lenient_regex, message.strip(), re.IGNORECASE | re.DOTALL)
+# 				if not m:
+# 					return False
+# 				m = re.match(original_regex, message.strip(), regex_opts)
+# 				if m:
+# 					func(sender, m.groups()[0])
+# 				else:
+# 					func(sender, None)
+# 				return True
+# 			commands.append(wrapper)
+# 			return wrapper
+
+# 		return decorator
+
+# 	else:
+# 		func = regex_or_func
+# 		# Convention that directly wrapping = they only need senderid
+# 		regex = '^' + func.__name__ + '$'
+# 		@functools.wraps(func)
+# 		def wrapper(sender, message):
+# 			m = re.match(regex, message.strip(), re.IGNORECASE)
+# 			if not m:
+# 				return False
+# 			func(sender)
+# 			return True
+# 		commands.append(wrapper)
+# 		return wrapper
+
+# def require_game(func):
+# 	@functools.wraps(func)
+# 	def wrapper(sender):
+# 		player, opponent, game = db.get_context(sender)
+# 		# game = db.get_active_gameII(sender)
+# 		# TODO logic for if no active games with a specific person, etc.
+# 		if not game:
+# 			if opponent is None:
+# 				send_message(sender, 'You have no active games')
+# 			else:
+# 				send_message(sender, f'You have no active games with {opponent.nickname}')
+# 		else:
+# 			# if sender == game.whiteplayer.id:
+# 			# 	func(game.whiteplayer, game.blackplayer, game)
+# 			# else:
+# 			# 	func(game.blackplayer, game.whiteplayer, game)
+# 			func(player, opponent, game)
+# 	return wrapper
+
+# def require_person(func):
+# 	raise NotImplementedError
+# 	# @functools.wraps(func)
+# 	# def wrapper(sender):
+
+
+# def allow_anonymous(func):
+# 	anonymous_commands.append(func)
+# 	return func
+
+# def require_nickname(func):

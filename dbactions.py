@@ -14,6 +14,15 @@ except ModuleNotFoundError:
 
 DATABASE_URL = os.environ['DATABASE_URL']
 
+# # Person = collections.namedtuple('Person', 'id nickname')
+# class Person:
+# 	def __init__(self, id, nickname):
+# 		self.id = id
+# 		self.nickname = nickname
+
+# 	def isregistered(self):
+# 		return self.id is not None
+
 Player = collections.namedtuple('Player', 'id nickname opponentid color')
 
 class Game:
@@ -254,3 +263,13 @@ class DB:
 			cur.execute('SELECT id FROM player WHERE id = %s', [playerid])
 			result = cur.fetchone()
 			return result is not None
+
+	def player_from_nickname(self, nickname):
+		with self.cursor() as cur:
+			cur.execute('SELECT id, nickname FROM player WHERE nickname = %s', [nickname])
+			result = cur.fetchone()
+			# Don't like overloading this...see what happens for now
+			if result is None:
+				return Player(None, nickname, None, None)
+			else:
+				return Player(result[0], result[1], None, None)
