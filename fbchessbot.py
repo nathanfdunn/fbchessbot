@@ -32,14 +32,12 @@ db = dbactions.DB()
 
 app = Flask(__name__)
 
-def nicknamevalid(nickname):
-	return re.fullmatch(r'[')
-
 @app.route('/image/<fen>', methods=['GET'])
 def board_image(fen):
 	board_image_name = f'/tmp/{fen}.png'
 	fen = fen.replace('-', '/')  + ' w - - 0 1'
-	board = chess.Board(fen)
+	# board = chess.Board(fen)
+	board = dbactions.ChessBoard(fen)
 	board_string_array = str(board).replace(' ', '').split('\n')
 	board_image = create_board_image(board_string_array)
 	board_image.save(board_image_name)

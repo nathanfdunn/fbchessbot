@@ -323,7 +323,8 @@ def board_from_str(board, extras):
 			row = row.replace('.'*i, str(i))
 		rows.append(row)
 	fen = '/'.join(rows) + extras
-	return chess.Board(fen)
+	return dbactions.ChessBoard(fen)
+	# return chess.Board(fen)
 
 
 class TestGamePlay(GamePlayTest):

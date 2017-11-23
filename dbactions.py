@@ -26,10 +26,47 @@ DATABASE_URL = os.environ['DATABASE_URL']
 
 Player = collections.namedtuple('Player', 'id nickname opponentid color')
 
+class ChessBoard(chess.Board):
+	def to_byte_string(self):
+		original_fen = self.original_fen()
+		blank = ChessBoard(original_fen)
+		move_indices = []
+		for move in self.move_stack:
+			legal_moves = self._order_moves(blank)
+			move_indices.append(legal_moves.index(move))
+			blank.push(move)
+
+		# Hopefully there can only ever be 255 legal moves in chess...
+		# Pretty sure it's true for regular chess...maybe wrong for not real chess
+		return original_fen.encode('ascii') + b'\xff' + bytes(move_indices)
+
+	@staticmethod
+	def _order_moves(board):
+		'''Just an arbitrary ordering to be consistent'''
+		return sorted(board.legal_moves, key=lambda move: move.uci())
+
+	@classmethod
+	def from_byte_string(cls, bytestring):
+		original_fen, moves = bytestring.split(b'\xff')
+		out = cls(original_fen.decode('ascii'))
+		for byte in moves:
+			legal_moves = cls._order_moves(out)
+			out.push(legal_moves[byte])
+		return out
+
+	# TODO the only reason I have this is for my test framework...maybe remove???
+	def original_fen(self):
+		'''The fen that the game started with (not necessarily standard position)'''
+		board = self.copy()			# This will actually be a standard chess.Board, not a ChessBoard
+		while board.move_stack:
+			board.pop()
+		return board.fen()
+
 class Game:
 	def __init__(self, id, raw_board, active, whiteplayer, blackplayer, undo, outcome):
 		self.id = id
-		self.board = pickle.loads(bytes(raw_board))
+		# self.board = pickle.loads(bytes(raw_board))
+		self.board = ChessBoard.from_byte_string(raw_board)
 
 		self.active = active
 		self.whiteplayer = whiteplayer
@@ -42,7 +79,8 @@ class Game:
 
 	# Technically it's just the board that's serialized
 	def serialized(self):
-		return pickle.dumps(self.board)
+		return self.board.to_byte_string()
+		# return pickle.dumps(self.board)
 
 	def image_url(self, perspective=True):
 		BLACK = False
@@ -153,7 +191,8 @@ class DB:
 				INSERT INTO games (board, active, whiteplayer, blackplayer, undo) VALUES (
 					%s, TRUE, %s, %s, FALSE
 				)
-				""", [pickle.dumps(chess.Board()), whiteplayer, blackplayer])
+				""", [ChessBoard().to_byte_string(), whiteplayer, blackplayer])
+				# """, [pickle.dumps(chess.Board()), whiteplayer, blackplayer])
 			cur.connection.commit()
 
 	# Returns specified Player, opponent Player, active Game
@@ -201,7 +240,7 @@ class DB:
 			if row[6] is None:
 				game = None
 			else:
-				game = Game(row[6], row[7], row[8], whiteplayer, blackplayer, row[11], row[12])
+				game = Game(row[6], bytes(row[7]), row[8], whiteplayer, blackplayer, row[11], row[12])
 
 			return player, opponent, game
 
@@ -214,7 +253,8 @@ class DB:
 				id = %s
 				""", [game_id])
 			# Assumes there will be a match
-			return pickle.loads(bytes(cur.fetchone()[0]))
+			# return pickle.loads(bytes(cur.fetchone()[0]))
+			return ChessBoard.from_byte_string(bytes(cur.fetchone()[0]))
 
 	def set_nickname(self, sender, nickname):
 		playerid = int(sender)
