@@ -165,6 +165,8 @@ def migration7():
 # 		""")
 @register_migration
 def migration9():
+	import pickle
+	import dbactions
 	op()
 	cur.execute('''
 		SELECT id, board FROM games

@@ -648,10 +648,10 @@ class TestMiscellaneous(GamePlayTest):
 
 
 if __name__ == '__main__':
-	# unittest.main()
-	pass
+	unittest.main()
+	# pass
 
-if True:
+if False:
 	self = BaseTest()
 	self.setUpClass()
 	self.db.delete_all()
