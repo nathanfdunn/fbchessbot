@@ -648,9 +648,10 @@ class TestMiscellaneous(GamePlayTest):
 
 
 if __name__ == '__main__':
-	unittest.main()
+	# unittest.main()
+	pass
 
-if False:
+if True:
 	self = BaseTest()
 	self.setUpClass()
 	self.db.delete_all()
@@ -661,7 +662,7 @@ if False:
 	# Just so we can be sure these two are playing each other
 	self.handle_message(self.izzy_id, 'Play against Jess', expected_replies=None)
 	self.handle_message(self.jess_id, 'Play against Izzy', expected_replies=None)
-	# self.handle_message(self.izzy_id, 'new game white')
+	self.handle_message(self.izzy_id, 'new game white')
 	# self.handle_message(self.izzy_id, 'new game black')
 	# self.handle_message(self.izzy_id, 'new game white')
 	# self.handle_message(self.izzy_id, 'new game black')

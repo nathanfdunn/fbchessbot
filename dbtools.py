@@ -157,12 +157,30 @@ def migration7():
 		""")
 	cur.connection.commit()
 
+# @register_migration
+# def migration8():
+# 	op()
+# 	cur.execute("""
+# 		ALTER TABLE 
+# 		""")
 @register_migration
-def migration8():
+def migration9():
 	op()
-	cur.execute("""
-		ALTER TABLE 
-		""")
+	cur.execute('''
+		SELECT id, board FROM games
+		''')
+	boards = list(cur)
+	for id, board in boards:
+		old_board = pickle.loads(bytes(board))
+		# Assuming that we only have games that start in standard position
+		new_board = dbactions.ChessBoard()
+		for move in old_board.move_stack:
+			new_board.push(move)
+		cur.execute('''
+			UPDATE games SET board = %s WHERE id = %s
+			''', [new_board.to_byte_string(), id])
+	cur.connection.commit()
+	cur.close()
 
 def apply_all_migrations():
 	for m in migrations:
