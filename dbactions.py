@@ -65,7 +65,6 @@ class ChessBoard(chess.Board):
 class Game:
 	def __init__(self, id, raw_board, active, whiteplayer, blackplayer, undo, outcome):
 		self.id = id
-		# self.board = pickle.loads(bytes(raw_board))
 		self.board = ChessBoard.from_byte_string(raw_board)
 
 		self.active = active
@@ -80,7 +79,6 @@ class Game:
 	# Technically it's just the board that's serialized
 	def serialized(self):
 		return self.board.to_byte_string()
-		# return pickle.dumps(self.board)
 
 	def image_url(self, perspective=True):
 		BLACK = False
@@ -192,7 +190,6 @@ class DB:
 					%s, TRUE, %s, %s, FALSE
 				)
 				""", [ChessBoard().to_byte_string(), whiteplayer, blackplayer])
-				# """, [pickle.dumps(chess.Board()), whiteplayer, blackplayer])
 			cur.connection.commit()
 
 	# Returns specified Player, opponent Player, active Game
@@ -253,7 +250,6 @@ class DB:
 				id = %s
 				""", [game_id])
 			# Assumes there will be a match
-			# return pickle.loads(bytes(cur.fetchone()[0]))
 			return ChessBoard.from_byte_string(bytes(cur.fetchone()[0]))
 
 	def set_nickname(self, sender, nickname):

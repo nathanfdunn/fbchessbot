@@ -627,6 +627,11 @@ class TestMiscellaneous(GamePlayTest):
 		self.handle_message(self.nate_id, 'help')
 		self.assertLastMessageEquals(self.nate_id, 'Help text coming soon...')
 
+	# Maybe should also test with unregistered user
+	def test_empty(self):
+		self.handle_message(self.nate_id, '')
+		self.assertLastMessageEquals(self.nate_id, 'That is an invalid move')
+
 	@unittest.skip
 	def test_pgn(self):
 		pass
