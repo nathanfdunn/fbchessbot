@@ -10,6 +10,7 @@ from flask import Flask, request, send_file
 from PIL import Image, ImageDraw
 import requests
 
+from constants import WHITE, BLACK, WHITE_WINS, BLACK_WINS, DRAW
 import dbactions
 try:
 	import env
@@ -20,13 +21,13 @@ except ModuleNotFoundError:
 VERIFY_TOKEN = os.environ['VERIFY_TOKEN']
 PAGE_ACCESS_TOKEN = os.environ['PAGE_ACCESS_TOKEN']
 
-WHITE = 1
-BLACK = 0
+# WHITE = 1
+# BLACK = 0
 
-# Outcome codes
-WHITE_WINS = 1
-BLACK_WINS = 2
-DRAW = 3
+# # Outcome codes
+# WHITE_WINS = 1
+# BLACK_WINS = 2
+# DRAW = 3
 
 db = dbactions.DB()
 
@@ -489,72 +490,3 @@ def create_board_image(board):
 
 if __name__ == '__main__':
 	app.run(host='0.0.0.0')
-
-
-# def command(regex_or_func, regex_opts=re.IGNORECASE | re.DOTALL):
-# 	if type(regex_or_func) is str:
-# 		regex = regex_or_func
-# 		# Convention that regex args => they need a capture group
-# 		original_regex = '^' + regex.replace(' ', r'\s+') + '$'
-# 		lenient_regex = re.sub(r'\(.*\)', r'(.*)', original_regex)
-# 		def decorator(func):
-# 			@functools.wraps(func)
-# 			def wrapper(sender, message):
-# 				m = re.match(lenient_regex, message.strip(), re.IGNORECASE | re.DOTALL)
-# 				if not m:
-# 					return False
-# 				m = re.match(original_regex, message.strip(), regex_opts)
-# 				if m:
-# 					func(sender, m.groups()[0])
-# 				else:
-# 					func(sender, None)
-# 				return True
-# 			commands.append(wrapper)
-# 			return wrapper
-
-# 		return decorator
-
-# 	else:
-# 		func = regex_or_func
-# 		# Convention that directly wrapping = they only need senderid
-# 		regex = '^' + func.__name__ + '$'
-# 		@functools.wraps(func)
-# 		def wrapper(sender, message):
-# 			m = re.match(regex, message.strip(), re.IGNORECASE)
-# 			if not m:
-# 				return False
-# 			func(sender)
-# 			return True
-# 		commands.append(wrapper)
-# 		return wrapper
-
-# def require_game(func):
-# 	@functools.wraps(func)
-# 	def wrapper(sender):
-# 		player, opponent, game = db.get_context(sender)
-# 		# game = db.get_active_gameII(sender)
-# 		# TODO logic for if no active games with a specific person, etc.
-# 		if not game:
-# 			if opponent is None:
-# 				send_message(sender, 'You have no active games')
-# 			else:
-# 				send_message(sender, f'You have no active games with {opponent.nickname}')
-# 		else:
-# 			# if sender == game.whiteplayer.id:
-# 			# 	func(game.whiteplayer, game.blackplayer, game)
-# 			# else:
-# 			# 	func(game.blackplayer, game.whiteplayer, game)
-# 			func(player, opponent, game)
-# 	return wrapper
-
-# def require_person(func):
-# 	raise NotImplementedError
-# 	# @functools.wraps(func)
-# 	# def wrapper(sender):
-
-
-# def allow_anonymous(func):
-# 	anonymous_commands.append(func)
-# 	return func
-
-# def require_nickname(func):

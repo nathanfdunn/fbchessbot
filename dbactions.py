@@ -7,6 +7,8 @@ import chess
 import psycopg2
 import psycopg2.extras
 
+import constants
+
 try:
 	import env
 except ModuleNotFoundError:
@@ -172,7 +174,7 @@ class DB:
 		with self.cursor() as cur:
 			cur.execute('''
 				UPDATE games SET active = FALSE, outcome = %s WHERE id = %s
-				''', [outcome, game.id])
+				''', [int(outcome), game.id])
 			cur.connection.commit()
 
 	def create_new_game(self, whiteplayer, blackplayer):
@@ -197,8 +199,8 @@ class DB:
 		with self.cursor() as cur:
 			cur.execute("""
 				SELECT
-					p.id AS playerid, p.nickname AS player_nickname, p.opponent_context AS player_opponent_id,
-					o.id AS opponentid, o.nickname AS opponent_nickname, o.opponent_context AS opponent_opponent_id,
+					p.id AS playerid, p.nickname AS player_nickname, p.opponent_context AS player_opponentid,
+					o.id AS opponentid, o.nickname AS opponent_nickname, o.opponent_context AS opponent_opponentid,
 					g.id AS gameid, g.board, g.active, g.whiteplayer, g.blackplayer, g.undo, g.outcome
 				FROM player p
 				LEFT JOIN player o ON p.opponent_context = o.id
@@ -214,41 +216,41 @@ class DB:
 			if row is None:						# user isn't even registered
 				return None, None, None
 
-			if row[9] is None:					# Indicates there is no game
+			if row.whiteplayer is None:					# Indicates there is no game
 				player_color = None 			# so they have no color
 				opponent_color = None
 			else:
-				player_color = (player_id == row[9])
-				opponent_color = (player_id != row[9])
+				player_color = constants.WHITE if player_id == row.whiteplayer else constants.BLACK
+				opponent_color = not player_color
 
-			player = Player(row[0], row[1], row[2], player_color)
-			if row[3] is None:
+			player = Player(row.playerid, row.player_nickname, row.player_opponentid, player_color)
+			if row.opponentid is None:
 				opponent = None
 			else:
-				opponent = Player(row[3], row[4], row[5], opponent_color)
+				opponent = Player(row.opponentid, row.opponent_nickname, row.opponent_opponentid, opponent_color)
 
-			if row[9] == player_id:          # if g.whiteplayer == playerid
+			if row.whiteplayer == player_id:
 				whiteplayer = player
 				blackplayer = opponent
 			else:
 				whiteplayer = opponent
 				blackplayer = player
 
-			if row[6] is None:
+			if row.gameid is None:
 				game = None
 			else:
-				game = Game(row[6], bytes(row[7]), row[8], whiteplayer, blackplayer, row[11], row[12])
+				game = Game(row.gameid, bytes(row.board), row.active, whiteplayer, blackplayer, row.undo, row.outcome)
 
 			return player, opponent, game
 
 
-	def board_from_id(self, game_id):
+	def board_from_id(self, gameid):
 		with self.cursor() as cur:
 			cur.execute("""
 				SELECT board
 				FROM games WHERE 
 				id = %s
-				""", [game_id])
+				""", [gameid])
 			# Assumes there will be a match
 			return ChessBoard.from_byte_string(bytes(cur.fetchone()[0]))
 
@@ -310,4 +312,4 @@ class DB:
 			if result is None:
 				return Player(None, nickname, None, None)
 			else:
-				return Player(result[0], result[1], None, None)
+				return Player(result.id, result.nickname, None, None)
