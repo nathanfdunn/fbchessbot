@@ -111,7 +111,9 @@ def handle_message(sender, message):
 		if not any(func(sender, message) for func in anonymous_commands):
 			send_message(sender, "Hi! Why don't you introduce yourself? (say My name is <name>)")
 
-def command(*, require_game=False, allow_anonymous=False, require_person=False, receive_args=False):
+def command(should_be_none=None, *, require_game=False, allow_anonymous=False, require_person=False, receive_args=False):
+	if should_be_none is not None:
+		raise Exception('Use command(), not command. (This is not a decorator, it is a function that returns a decorator)')
 	def decorator(func):
 		parms = set(inspect.signature(func).parameters.keys())
 		# Validate underlying arguments
@@ -149,15 +151,15 @@ def command(*, require_game=False, allow_anonymous=False, require_person=False, 
 
 			if require_game:
 				player, opponent, game = db.get_context(sender)
-				if not game:
+				if game:
+					kwargs.update(player=player, opponent=opponent, game=game)
+				else:
 					if opponent is None:
 						send_message(sender, 'You have no active games')
 						return True
 					else:
 						send_message(sender, f'You have no active games with {opponent.nickname}')
 						return True
-				else:
-					kwargs.update(player=player, opponent=opponent, game=game)
 
 			if receive_args:
 				func(m.group(1).strip(), **kwargs)
