@@ -88,6 +88,7 @@ class BaseTest(unittest.TestCase, CustomAssertions):
 	@classmethod
 	def setUpClass(cls):
 		cls.db = dbactions.DB()
+		cls.db.delete_all()
 		# cls.nate_id = 32233848429
 		# cls.chad_id = 83727482939
 		# cls.jess_id = 47463849663
@@ -95,7 +96,12 @@ class BaseTest(unittest.TestCase, CustomAssertions):
 
 	@classmethod
 	def tearDownClass(cls):
+		cls.db.delete_all()
 		del cls.db
+
+	def tearDown(self):
+		self.db.delete_all()
+		clear_mocks()
 
 	def handle_message(self, recipient, message, *, expected_replies=_sentinel):
 		'''Utility method for player input. Accounts for possibility of unexpected replies'''
@@ -128,9 +134,9 @@ class BaseTest(unittest.TestCase, CustomAssertions):
 			clear_mocks()
 
 class TestUnregisteredResponses(BaseTest):
-	def setUp(self):
-		self.db.delete_all()
-		clear_mocks()
+	# def setUp(self):
+	# 	self.db.delete_all()
+	# 	clear_mocks()
 
 	def test_does_display_intro(self):
 		newb = 12345678910
@@ -138,11 +144,11 @@ class TestUnregisteredResponses(BaseTest):
 		self.assertLastMessageEquals(newb, intro)
 
 class TestRegistration(BaseTest):
-	expected_replies = 1
+	# expected_replies = 1
 
-	def setUp(self):
-		self.db.delete_all()
-		clear_mocks()
+	# def setUp(self):
+	# 	self.db.delete_all()
+	# 	clear_mocks()
 
 	def test_can_register(self):
 		with self.subTest(player='Nate'):
@@ -238,12 +244,12 @@ class TestOpponentContext(BaseTest):
 	expected_replies = 1
 
 	def setUp(self):
-		self.db.delete_all()
+		# self.db.delete_all()
 		self.register_all()
-		# self.handle_message(self.nate_id, 'My name is Nate', expected_replies=None)
-		# self.handle_message(self.chad_id, 'My name is Chad', expected_replies=None)
-		# self.handle_message(self.jess_id, 'My name is Jess', expected_replies=None)
-		# self.handle_message(self.izzy_id, 'My name is Izzy', expected_replies=None)
+		# # self.handle_message(self.nate_id, 'My name is Nate', expected_replies=None)
+		# # self.handle_message(self.chad_id, 'My name is Chad', expected_replies=None)
+		# # self.handle_message(self.jess_id, 'My name is Jess', expected_replies=None)
+		# # self.handle_message(self.izzy_id, 'My name is Izzy', expected_replies=None)
 		# Just so we can be sure these two are playing each other
 		self.handle_message(self.izzy_id, 'Play against Jess', expected_replies=None)
 		self.handle_message(self.jess_id, 'Play against Izzy', expected_replies=None)
@@ -280,12 +286,12 @@ class TestGameInitiation(BaseTest):
 	# expected_replies = 1
 
 	def setUp(self):
-		self.db.delete_all()
+		# self.db.delete_all()
 		self.register_all()
-		# self.handle_message(self.nate_id, 'My name is Nate', expected_replies=None)
-		# self.handle_message(self.chad_id, 'My name is Chad', expected_replies=None)
-		# self.handle_message(self.jess_id, 'My name is Jess', expected_replies=None)
-		# self.handle_message(self.izzy_id, 'My name is Izzy', expected_replies=None)
+		# # self.handle_message(self.nate_id, 'My name is Nate', expected_replies=None)
+		# # self.handle_message(self.chad_id, 'My name is Chad', expected_replies=None)
+		# # self.handle_message(self.jess_id, 'My name is Jess', expected_replies=None)
+		# # self.handle_message(self.izzy_id, 'My name is Izzy', expected_replies=None)
 		self.handle_message(self.nate_id, 'Play against Jess', expected_replies=None)
 		self.handle_message(self.jess_id, 'Play against Nate', expected_replies=None)
 		clear_mocks()
@@ -320,11 +326,11 @@ class TestGameInitiation(BaseTest):
 
 class GamePlayTest(BaseTest):
 	def setUp(self):
-		clear_mocks()
-		self.db.delete_all()
-		# self.handle_message(self.nate_id, 'My name is Nate', expected_replies=None)
-		# self.handle_message(self.jess_id, 'My name is Jess', expected_replies=None)
-		# self.handle_message(self.chad_id, 'My name is Chad', expected_replies=None)
+		# clear_mocks()
+		# self.db.delete_all()
+		# # self.handle_message(self.nate_id, 'My name is Nate', expected_replies=None)
+		# # self.handle_message(self.jess_id, 'My name is Jess', expected_replies=None)
+		# # self.handle_message(self.chad_id, 'My name is Chad', expected_replies=None)
 		self.register_player('Nate')
 		self.register_player('Jess')
 		self.register_player('Chad')
@@ -337,7 +343,7 @@ class GamePlayTest(BaseTest):
 		clear_mocks()
 
 	def set_position(self, board, extras=' w KQkq - 0 1'):
-		"Sets the state of the game between Nate and Jess to the specified position"
+		'''Sets the state of the game between Nate and Jess to the specified position'''
 		_, _, game = self.db.get_context(self.nate_id)
 		game.board = board_from_str(board, extras)
 		self.db.save_game(game)
@@ -693,12 +699,55 @@ class TestMiscellaneous(GamePlayTest):
 		pass
 		# self.handle_message(self.nate_id, 'status', expected_replies=1)
 
+# @unittest.expectedFailure
+@unittest.skip
 class TestPlayerInteractions(BaseTest):
+	def init_blocks(self):
+		self.handle_message(self.nate_id, 'Play against Jess')
+		self.handle_message(self.jess_id, 'Play against Nate')
+		self.handle_message(self.nate_id, 'Block Jess')
 
-	def test_can_block(self):
+	def setUp(self):
+		self.register_all()
+
+	def test_can_block_newly_registered(self):
+		with self.subTest('Block notifications'):
+			self.handle_message(self.nate_id, 'Block jess', expected_replies=2)
+			self.assertLastMessageEquals(self.nate_id, 'You have blocked Jess')
+			self.assertLastMessageEquals(self.jess_id, 'You have been blocked by Nate')
+
+		with self.subTest('Block effects'):
+			self.handle_message(self.nate_id, 'Play against Jess', expected_replies=1)
+			self.assertLastMessageEquals(self.nate_id, 'You have blocked Jess')
+
+			self.handle_message(self.jess_id, 'Play against Nate', expected_replies=1)
+			self.assertLastMessageEquals(self.jess_id, 'You have been blocked by Nate')
+
+
+
+
+		# self.handle_message(self.jess_id, 'New game white', expected_replies=1)
+		# self.assertLastMessageEquals(self.jess_id, 'You have been blocked by Nate')
+
+	def test_can_block_before_game_starts(self):
 		pass
-	# def te
-	pass
+
+	def test_can_block_during_game(self):
+		pass
+
+	def test_can_unblock(self):
+		self.handle_message(self.nate_id, 'Block jess', expected_replies=None)
+
+		self.handle_message(self.nate_id, 'Unblock jess', expected_replies=2)
+		self.assertLastMessageEquals(self.nate_id, 'You have unblocked Jess')
+		self.assertLastMessageEquals(self.jess_id, 'You have been unblocked by Nate')
+
+# class TestBlocking(BaseTest):
+# 	def setUp(self):
+# 		self.register_all()
+
+
+	# def test_can_
 
 
 if __name__ == '__main__':
