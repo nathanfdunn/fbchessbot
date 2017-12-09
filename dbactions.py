@@ -246,11 +246,49 @@ class DB:
 	def get_most_recent_game(self, playerid):
 		with self.cursor() as cur:
 			cur.execute("""
-				SELECT MAX(id)
-				FROM games
+				SELECT
+					p.id AS playerid, p.nickname AS player_nickname, p.opponent_context AS player_opponentid,
+					o.id AS opponentid, o.nickname AS opponent_nickname, o.opponent_context AS opponent_opponentid,
+					g.id AS gameid, g.board, g.active, g.whiteplayer, g.blackplayer, g.undo, g.outcome
+				FROM player p
+				LEFT JOIN player o ON p.opponent_context = o.id
+				LEFT JOIN games g ON (
+						(g.whiteplayer = p.id AND g.blackplayer = o.id) 
+						OR 
+						(g.blackplayer = p.id AND g.whiteplayer = o.id)
+					)
+				WHERE g.id = (SELECT MAX(id) FROM games)	--Total hack
 				""")
-			gameid = cur.fetchone()
-		return self.board_from_id(gameid)
+			row = cur.fetchone()
+			if row is None:						# user isn't even registered
+				return None, None, None
+
+			if row.whiteplayer is None:					# Indicates there is no game
+				player_color = None 			# so they have no color
+				opponent_color = None
+			else:
+				player_color = constants.WHITE if player_id == row.whiteplayer else constants.BLACK
+				opponent_color = not player_color
+
+			player = Player(row.playerid, row.player_nickname, row.player_opponentid, player_color)
+			if row.opponentid is None:
+				opponent = None
+			else:
+				opponent = Player(row.opponentid, row.opponent_nickname, row.opponent_opponentid, opponent_color)
+
+			if row.whiteplayer == player_id:
+				whiteplayer = player
+				blackplayer = opponent
+			else:
+				whiteplayer = opponent
+				blackplayer = player
+
+			if row.gameid is None:
+				game = None
+			else:
+				game = Game(row.gameid, bytes(row.board), row.active, whiteplayer, blackplayer, row.undo, row.outcome)
+
+			return game
 
 	def board_from_id(self, gameid):
 		with self.cursor() as cur:
