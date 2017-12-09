@@ -243,6 +243,14 @@ class DB:
 
 			return player, opponent, game
 
+	def get_most_recent_game(self, playerid):
+		with self.cursor() as cur:
+			cur.execute("""
+				SELECT MAX(id)
+				FROM games
+				""")
+			gameid = cur.fetchone()
+		return self.board_from_id(gameid)
 
 	def board_from_id(self, gameid):
 		with self.cursor() as cur:

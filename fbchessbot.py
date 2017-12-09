@@ -291,7 +291,8 @@ def new_game(color, sender):
 
 @command()
 def pgn(sender):
-	game = db.get_active_gameII(sender)
+	game = db.get_most_recent_game(sender)
+	# game = db.get_active_gameII(sender)
 	send_pgn(sender, game)
 
 
