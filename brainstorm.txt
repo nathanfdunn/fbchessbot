@@ -1,0 +1,48 @@
+play against Nate
+
+
+You have been challenged to a game by X
+
+accept challenge
+reject challenge
+block player
+
+set acceptance automatic			-- will make it so you will automatically accept challenges
+
+autoaccept all
+autoaccept friends
+autoaccept none
+
+autoreject all
+autoreject strangers
+autoreject none				
+
+
+play against Nate white
+play against Nate black
+
+a challenge shouldn't rip you out of the game
+
+>>> status
+You have 3 outstanding challenges
+-Jess
+-Chad
+-Nate
+
+You have 2 active games
+-Chad (Black)
+-Izzy (Black)
+
+>>> stats
+You have played 15 games against 2 players, you have won 4 games, lost 8, and drawn 3
+
+Player | won | lost | drawn | total
+-------+-----+------+-------+------
+Chad   |  23 | 12   | 9     | 44
+-------+-----+------+-------+------
+
+
+
+draw
+
+draw

@@ -111,9 +111,11 @@ def handle_message(sender, message):
 		if not any(func(sender, message) for func in anonymous_commands):
 			send_message(sender, "Hi! Why don't you introduce yourself? (say My name is <name>)")
 
-def command(should_be_none=None, *, require_game=False, allow_anonymous=False, require_person=False, receive_args=False):
-	if should_be_none is not None:
-		raise Exception('Use command(), not command. (This is not a decorator, it is a function that returns a decorator)')
+def command(function=None, *, require_game=False, allow_anonymous=False, require_person=False, receive_args=False):
+	if function is not None:
+		# raise Exception('Use command(), not command. (This is not a decorator, it is a function that returns a decorator)')
+		return command()(function)
+
 	def decorator(func):
 		parms = set(inspect.signature(func).parameters.keys())
 		# Validate underlying arguments
@@ -138,6 +140,8 @@ def command(should_be_none=None, *, require_game=False, allow_anonymous=False, r
 				return False
 			if require_person:
 				nickname = m.group(1).strip()
+				if nickname.lower() in constants.special_nicknames:
+					kwargs['other'] = nickname.lower()
 				if not re.fullmatch(r'[A-Za-z_][A-Za-z0-9]{0,31}', nickname.strip()):
 					send_message(sender, 'That is an invalid screen name')
 					return True
@@ -307,16 +311,23 @@ def status(sender):
 def stats(sender):
 	pass
 
-# @command
-# @require_person
-# def block(sender, nickname):
-# 	pass
+@command(require_person=True)
+def block(sender, other):
+	if other == constants.EVERYONE:
+		pass
+	elif other == constants.STRANGERS:
+		pass
+	else:
+		pass
 
-# @command
-# @require_person
-# def unblock(sender, nickname):
-# 	pass
-
+@command(require_person=True)
+def unblock(sender, other):
+	if other == constants.EVERYONE:
+		pass
+	elif other == constants.STRANGERS:
+		pass
+	else:
+		pass
 
 
 def normalize_move(game, move):

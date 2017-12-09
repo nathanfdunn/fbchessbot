@@ -184,6 +184,13 @@ def migration9():
 	cur.connection.commit()
 	cur.close()
 
+# @register_migration
+# def migration10():
+# 	op()
+# 	cur.execute('''
+# 		CREATE TABLE player_
+# 		''')
+
 def apply_all_migrations():
 	for m in migrations:
 		m()

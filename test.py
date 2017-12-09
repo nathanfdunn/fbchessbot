@@ -430,8 +430,6 @@ class TestGamePlay(GamePlayTest):
 			self.handle_message(self.nate_id, 'Ne6', expected_replies=1)
 			self.assertLastMessageEquals(self.nate_id, 'That move could refer to two or more pieces')
 
-
-
 	@unittest.skip
 	def test_can_qualify_ambiguous_move(self):
 		self.perform_moves(self.nate_id, self.jess_id, [('e4', 'f5'), ('c4', 'd5')])
@@ -455,7 +453,6 @@ class TestGamePlay(GamePlayTest):
 		self.set_position(board)
 		self.handle_message(self.nate_id, 'Bf3', expected_replies=3)
 
-	# @unittest.skip
 	def test_can_make_case_insensitive_pawn_move(self):
 		self.handle_message(self.nate_id, 'E4', expected_replies=3)
 		self.assertLastGameRepEquals(self.nate_id, 'rnbqkbnr-pppppppp-8-8-4P3-8-PPPP1PPP-RNBQKBNR')
@@ -495,8 +492,6 @@ class TestGamePlay(GamePlayTest):
 			self.handle_message(self.nate_id, 'e8q', expected_replies=3)
 			self.assertLastGameRepEquals(self.nate_id, '4Q3-1k6-8-8-8-8-8-1K6')
 
-
-	
 	def test_can_castle(self):
 		board = '''
 				r . . . k . . r
@@ -699,8 +694,7 @@ class TestMiscellaneous(GamePlayTest):
 		pass
 		# self.handle_message(self.nate_id, 'status', expected_replies=1)
 
-# @unittest.expectedFailure
-@unittest.skip
+# @unittest.skip
 class TestPlayerInteractions(BaseTest):
 	def init_blocks(self):
 		self.handle_message(self.nate_id, 'Play against Jess')
@@ -724,10 +718,46 @@ class TestPlayerInteractions(BaseTest):
 			self.assertLastMessageEquals(self.jess_id, 'You have been blocked by Nate')
 
 
+	def test_can_block_all(self):
+		with self.subTest('Sender notification'):
+			self.handle_message(self.nate_id, 'Block everyone', expected_replies=1)
+			self.assertLastMessageEquals(self.nate_id, 'You have blocked everyone')
 
+		with self.subTest('Block effects'):
+			self.handle_message(self.jess_id, 'Play against Nate', expected_replies=1)
+			self.assertLastMessageEquals(self.jess_id, 'Nate is not accepting any challenges')
+
+	def test_can_block_strangers(self):
+		with self.subTest('Sender notification'):
+			self.handle_message(self.nate_id, 'Block strangers', expected_replies=1)
+			self.assertLastMessageEquals(self.nate_id, 'Strangers will no longer be able to interact with you')
+
+		with self.subTest('Stranger blocked'):
+			self.handle_message(self.chad_id, 'Play against Nate', expected_replies=1)
+			self.assertLastMessageEquals(self.chad_id, 'Nate is not accepting any challenges')
+
+		with self.subTest('Friend not blocked'):
+			self.handle_message(self.jess_id, 'Play against Nate', expected_replies=1)
+			self.assertLastMessageEquals(self.jess_id, 'You are now playing against Nate')
+
+
+	def test_can_unblock_strangers(self):
+		with self.subTest('Sender notification'):
+			self.handle_message(self.nate_id, 'Unblock strangers', expected_replies=1)
+			self.assertLastMessageEquals(self.nate_id, 'Strangers will now be able to interact with you')
+
+		with self.subTest('Stranger unblocked'):
+			self.handle_message(self.chad_id, 'Play against Nate', expected_replies=1)
+			self.assertLastMessageEquals(self.chad_id, 'Nate is not accepting any challenges')
+
+		with self.subTest('Friend still not blocked'):
+			self.handle_message(self.jess_id, 'Play against Nate', expected_replies=1)
+			self.assertLastMessageEquals(self.jess_id, 'You are now playing against Nate')
 
 		# self.handle_message(self.jess_id, 'New game white', expected_replies=1)
 		# self.assertLastMessageEquals(self.jess_id, 'You have been blocked by Nate')
+
+
 
 	def test_can_block_before_game_starts(self):
 		pass
@@ -742,6 +772,10 @@ class TestPlayerInteractions(BaseTest):
 		self.assertLastMessageEquals(self.nate_id, 'You have unblocked Jess')
 		self.assertLastMessageEquals(self.jess_id, 'You have been unblocked by Nate')
 
+class TestChallengeAcceptance(BaseTest):
+	def setUp():
+		self.register_all()
+		
 # class TestBlocking(BaseTest):
 # 	def setUp(self):
 # 		self.register_all()
