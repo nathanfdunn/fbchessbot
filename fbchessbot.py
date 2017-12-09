@@ -291,9 +291,11 @@ def new_game(color, sender):
 
 @command()
 def pgn(sender):
-	game = db.get_most_recent_game(sender)
+	gameid = db.get_most_recent_gameid(sender)
+	send_pgn_2(sender, gameid)
+	# game = db.get_most_recent_game(sender)
 	# game = db.get_active_gameII(sender)
-	send_pgn(sender, game)
+	# send_pgn(sender, game)
 
 
 @command(require_game=True)
@@ -412,6 +414,25 @@ def handle_move(sender, message):
 	elif game.board.is_check():
 		send_message(player.id, 'Check!')
 		send_message(opponent.id, 'Check!')
+
+def send_pgn_2(recipient, gameid):
+	r = requests.post('https://graph.facebook.com/v2.9/me/messages',
+		params={'access_token': PAGE_ACCESS_TOKEN},
+		data=json.dumps({
+			'recipient': {'id': recipient},
+			'message': {
+				'attachment': {
+					'type': 'file',
+					'payload': {
+						'url': f'https://fbchessbot.herokuapp.com/pgn/{gameid}.pgn'
+					}
+				}
+			}
+		}),
+		headers={'Content-type': 'application/json'}
+	)
+	if r.status_code != requests.codes.ok:
+		print('Error I think:', r.text)
 
 
 def send_pgn(recipient, game):
