@@ -247,12 +247,20 @@ def my_name_is(nickname, sender):
 # @command(r'play against (.*)')
 @command(require_person=True)
 def play_against(sender, other):
-	nickname = other.nickname
-	current_opponent = db.get_opponent_context(sender)
-	opponentid = db.id_from_nickname(nickname)
-	if current_opponent == opponentid != None:
+	current_opponentid = db.get_opponent_context(sender)
+	
+	blocked = db.is_blocked(sender, other.id)
+	if blocked[0]:
+		send_message(sender, f'You have blocked {other.nickname}')
+		return;
+	elif blocked[1]:
+		send_message(sender, f'You have been blocked by {other.nickname}')
+		return
+
+	if current_opponent == opponentid:
 		send_message(sender, f'You are already playing against {nickname}')
-	elif opponentid:
+		return
+	else:
 		opponent_opponent_context = db.get_opponent_context(opponentid)
 		if not opponent_opponent_context:
 			sender_nickname = db.nickname_from_id(sender)
@@ -260,8 +268,7 @@ def play_against(sender, other):
 			send_message(opponentid, f'You are now playing against {sender_nickname}')
 		db.set_opponent_context(sender, opponentid)
 		send_message(sender, f'You are now playing against {nickname}')
-	else:
-		send_message(sender, f"No player named '{nickname}'")
+		return
 
 
 @command(receive_args=True)
@@ -290,7 +297,7 @@ def new_game(color, sender):
 	show_game_to_both(g)
 
 
-@command()
+@command
 def pgn(sender):
 	gameid = db.get_most_recent_gameid(sender)
 	send_pgn_2(sender, gameid)
@@ -307,11 +314,11 @@ def resign(player, opponent, game):
 	send_message(opponent.id, f'{player.nickname} resigns. {opponent.nickname} wins!')
 
 
-@command()
+@command
 def status(sender):
 	pass
 
-@command()
+@command
 def stats(sender):
 	pass
 
@@ -323,7 +330,6 @@ def block(sender, other):
 		pass
 	else:
 		result = db.block_player(sender, other.id)
-		print('Result22:', result)
 		if result == 1:
 			send_message(sender, f'You have already blocked {other.nickname}')
 		else:

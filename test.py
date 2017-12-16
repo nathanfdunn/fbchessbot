@@ -731,6 +731,23 @@ class TestPlayerInteractions(BaseTest):
 		self.handle_message(self.nate_id, 'Block jess', expected_replies=1)
 		self.assertLastMessageEquals(self.nate_id, 'You have already blocked Jess')
 
+	def test_can_mutual_block(self):
+		self.handle_message(self.nate_id, 'Block jess', expected_replies=2)
+		self.handle_message(self.jess_id, 'Block nate', expected_replies=2)
+		self.assertLastMessageEquals(self.nate_id, 'You have been blocked by Jess')
+		self.assertLastMessageEquals(self.jess_id, 'You have blocked Nate')
+
+		with self.subTest('Self block message dominates'):
+			self.handle_message(self.nate_id, 'Play against jess', expected_replies=1)
+			self.assertLastMessageEquals(self.nate_id, 'You have blocked Jess')
+
+			self.handle_message(self.jess_id, 'Play against nate', expected_replies=1)
+			self.assertLastMessageEquals(self.jess_id, 'You have blocked Nate')
+
+	def test_blocking_removes_game_context(self):
+		pass
+
+
 	@unittest.skip
 	def test_can_block_all(self):
 		with self.subTest('Sender notification'):

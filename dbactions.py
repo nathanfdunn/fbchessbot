@@ -344,7 +344,13 @@ class DB:
 			cur.execute('''
 				SELECT cb.block_player(%s, %s)
 				''', [player, blocked_player_nickname])
-			cur.connection.commit()
-			result = cur.fetchone()
-			print('Result!', result)
-			return result[0]
+			# cur.connection.commit()
+			return cur.fetchone()[0]
+
+	def is_blocked(self, playerid, otherid):
+		with self.cursor() as cur:
+			cur.execute('''
+				SELECT cb.blocked(%s, %s)
+				''', [playerid, otherid])
+			result = cur.fetchone()[0]
+			return [(result & 1 > 0), (result & 2 > 0)]

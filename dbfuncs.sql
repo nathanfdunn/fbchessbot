@@ -36,3 +36,33 @@ BEGIN
 END
 $$ LANGUAGE plpgsql;
 
+-- First bit indicates whether  _playerid blocked _otherid
+-- Second bit indicates whether _otherid blocked _playerid
+CREATE OR REPLACE FUNCTION cb.blocked(
+	_playerid BIGINT,
+	_otherid BIGINT
+)
+RETURNS INT
+AS
+$$
+BEGIN
+	RETURN 
+		(SELECT CASE WHEN EXISTS(
+			SELECT * 
+			FROM player_blockage 
+			WHERE playerid = _playerid AND blocked_playerid = _otherid
+			)
+			THEN 1
+			ELSE 0
+		END)
+		|
+		(SELECT CASE WHEN EXISTS(
+			SELECT * 
+			FROM player_blockage 
+			WHERE playerid = _otherid AND blocked_playerid = _playerid
+			)
+			THEN 2
+			ELSE 0
+		END);
+END
+$$ LANGUAGE plpgsql;
