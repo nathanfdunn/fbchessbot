@@ -322,7 +322,15 @@ def block(sender, other):
 	elif other == constants.STRANGERS:
 		pass
 	else:
-		result = db.block_player(sender, other)
+		result = db.block_player(sender, other.id)
+		print('Result22:', result)
+		if result == 1:
+			send_message(sender, f'You have already blocked {other.nickname}')
+		else:
+			send_message(sender, f'You have blocked {other.nickname}')
+			blocker_name = db.nickname_from_id(sender)
+			send_message(other.id, f'You have been blocked by {blocker_name}')
+
 
 @command(require_person=True)
 def unblock(sender, other):

@@ -88,6 +88,7 @@ class BaseTest(unittest.TestCase, CustomAssertions):
 		self.register_player('Chad')
 		self.register_player('Jess')
 		self.register_player('Izzy')
+		clear_mocks()					# So we don't have all the noise from the registration
 
 	@classmethod
 	def setUpClass(cls):
@@ -702,7 +703,7 @@ class TestMiscellaneous(GamePlayTest):
 		pass
 		# self.handle_message(self.nate_id, 'status', expected_replies=1)
 
-@unittest.skip
+# @unittest.skip
 class TestPlayerInteractions(BaseTest):
 	def init_blocks(self):
 		self.handle_message(self.nate_id, 'Play against Jess')
@@ -725,7 +726,12 @@ class TestPlayerInteractions(BaseTest):
 			self.handle_message(self.jess_id, 'Play against Nate', expected_replies=1)
 			self.assertLastMessageEquals(self.jess_id, 'You have been blocked by Nate')
 
+	def test_can_block_redundant(self):
+		self.handle_message(self.nate_id, 'Block jess', expected_replies=2)
+		self.handle_message(self.nate_id, 'Block jess', expected_replies=1)
+		self.assertLastMessageEquals(self.nate_id, 'You have already blocked Jess')
 
+	@unittest.skip
 	def test_can_block_all(self):
 		with self.subTest('Sender notification'):
 			self.handle_message(self.nate_id, 'Block everyone', expected_replies=1)
@@ -735,6 +741,7 @@ class TestPlayerInteractions(BaseTest):
 			self.handle_message(self.jess_id, 'Play against Nate', expected_replies=1)
 			self.assertLastMessageEquals(self.jess_id, 'Nate is not accepting any challenges')
 
+	@unittest.skip
 	def test_can_block_strangers(self):
 		with self.subTest('Sender notification'):
 			self.handle_message(self.nate_id, 'Block strangers', expected_replies=1)
@@ -748,7 +755,7 @@ class TestPlayerInteractions(BaseTest):
 			self.handle_message(self.jess_id, 'Play against Nate', expected_replies=1)
 			self.assertLastMessageEquals(self.jess_id, 'You are now playing against Nate')
 
-
+	@unittest.skip
 	def test_can_unblock_strangers(self):
 		with self.subTest('Sender notification'):
 			self.handle_message(self.nate_id, 'Unblock strangers', expected_replies=1)

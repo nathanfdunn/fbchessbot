@@ -187,10 +187,10 @@ def migration9():
 @register_migration
 def migration10():
 	op()
-	# cur.execute('''
-	# 	ALTER TABLE player ADD 
-	# 		active BOOLEAN NOT NULL DEFAULT TRUE
-	# 	''')
+	cur.execute('''
+		ALTER TABLE player ADD 
+			active BOOLEAN NOT NULL DEFAULT TRUE
+		''')
 	cur.execute('''
 		CREATE TABLE IF NOT EXISTS player_blockage (
 			playerid BIGINT REFERENCES player(id),
@@ -244,12 +244,45 @@ def migration10():
 	cur.connection.commit()
 	cur.close()
 
+def migration11():
+	op()
+	cur.execute('''
+		CREATE SCHEMA cb
+		''')
+	cur.connection.commit()
 
 def refresh_funcs():
 	# print('refreshing!')
 	with op() as cursor, open('dbfuncs.sql') as f:
+		# Remove all existing functions
+		cursor.execute('''
+			CREATE OR REPLACE FUNCTION pg_temp.f_delfunc(_sch text)
+			  RETURNS void AS
+			$func$
+			DECLARE
+			   _sql text;
+			BEGIN
+			   SELECT INTO _sql
+			          string_agg(format('DROP FUNCTION %s(%s);'
+			                          , p.oid::regproc
+			                          , pg_get_function_identity_arguments(p.oid))
+			                   , E'\n')
+			   FROM   pg_proc      p
+			   JOIN   pg_namespace ns ON ns.oid = p.pronamespace
+			   WHERE  ns.nspname = _sch;
+
+			   IF _sql IS NOT NULL THEN
+			      --  RAISE NOTICE '%', _sql;  -- for debugging
+			      EXECUTE _sql;
+			   END IF;
+			END
+			$func$ LANGUAGE plpgsql;
+			SELECT pg_temp.f_delfunc('cb');
+			''')
+		
 		cursor.execute(f.read())
 		cursor.connection.commit()
+
 # @register_migration
 # def migration11():
 # 	op()
