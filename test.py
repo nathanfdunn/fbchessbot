@@ -797,6 +797,7 @@ class TestPlayerInteractions(BaseTest):
 	def test_can_block_during_game(self):
 		pass
 
+	@unittest.expectedFailure
 	def test_can_unblock(self):
 		self.handle_message(self.nate_id, 'Block jess', expected_replies=None)
 

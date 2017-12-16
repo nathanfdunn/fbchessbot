@@ -248,7 +248,7 @@ def my_name_is(nickname, sender):
 @command(require_person=True)
 def play_against(sender, other):
 	current_opponentid = db.get_opponent_context(sender)
-	
+	opponentid = other.id
 	blocked = db.is_blocked(sender, other.id)
 	if blocked[0]:
 		send_message(sender, f'You have blocked {other.nickname}')
@@ -257,8 +257,8 @@ def play_against(sender, other):
 		send_message(sender, f'You have been blocked by {other.nickname}')
 		return
 
-	if current_opponent == opponentid:
-		send_message(sender, f'You are already playing against {nickname}')
+	if current_opponentid == opponentid:
+		send_message(sender, f'You are already playing against {other.nickname}')
 		return
 	else:
 		opponent_opponent_context = db.get_opponent_context(opponentid)
@@ -267,7 +267,7 @@ def play_against(sender, other):
 			db.set_opponent_context(opponentid, sender)
 			send_message(opponentid, f'You are now playing against {sender_nickname}')
 		db.set_opponent_context(sender, opponentid)
-		send_message(sender, f'You are now playing against {nickname}')
+		send_message(sender, f'You are now playing against {other.nickname}')
 		return
 
 
