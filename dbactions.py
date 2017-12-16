@@ -290,7 +290,8 @@ class DB:
 
 	def id_from_nickname(self, nickname):
 		with self.cursor() as cur:
-			cur.execute('SELECT id FROM player WHERE LOWER(nickname) = LOWER(%s)', [nickname])
+			# cur.execute('SELECT id FROM player WHERE LOWER(nickname) = LOWER(%s)', [nickname])
+			cur.execute('SELECT get_playerid(%s)', [nickname])
 			result = cur.fetchone()
 			if result:
 				return result[0]
@@ -325,7 +326,8 @@ class DB:
 
 	def player_from_nickname(self, nickname):
 		with self.cursor() as cur:
-			cur.execute('SELECT id, nickname FROM player WHERE lower(nickname) = lower(%s)', [nickname])
+			# cur.execute('SELECT id, nickname FROM player WHERE lower(nickname) = lower(%s)', [nickname])
+			cur.execute('SELECT id, nickname FROM player WHERE id = get_playerid(%s)', [nickname])
 			result = cur.fetchone()
 			# Don't like overloading this...see what happens for now
 			if result is None:

@@ -9,7 +9,11 @@ import chess
 import psycopg2
 
 import dbactions
+from dbtools import refresh_funcs
 import fbchessbot
+
+# Want to refresh early and often
+refresh_funcs()
 
 intro = "Hi! Why don't you introduce yourself? (say My name is <name>)"
 

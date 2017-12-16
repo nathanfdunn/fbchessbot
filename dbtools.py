@@ -206,7 +206,7 @@ def migration10():
 		AS 
 		$$
 		BEGIN
-			RETURN (SELECT id FROM player WHERE nickname = playername);
+			RETURN (SELECT id FROM player WHERE lower(nickname) = lower(playername));
 		END
 		$$ LANGUAGE plpgsql;
 		''')
@@ -244,6 +244,12 @@ def migration10():
 	cur.connection.commit()
 	cur.close()
 
+
+def refresh_funcs():
+	# print('refreshing!')
+	with op() as cursor, open('dbfuncs.sql') as f:
+		cursor.execute(f.read())
+		cursor.connection.commit()
 # @register_migration
 # def migration11():
 # 	op()
