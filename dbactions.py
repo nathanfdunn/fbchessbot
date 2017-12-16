@@ -28,6 +28,8 @@ DATABASE_URL = os.environ['DATABASE_URL']
 
 Player = collections.namedtuple('Player', 'id nickname opponentid color')
 
+BlockResult = collections.namedtuple('BlockResult', 'success sender_not_found blocked_not_found is_redundant')
+
 class ChessBoard(chess.Board):
 	def to_byte_string(self):
 		original_fen = self.original_fen()
@@ -323,10 +325,24 @@ class DB:
 
 	def player_from_nickname(self, nickname):
 		with self.cursor() as cur:
-			cur.execute('SELECT id, nickname FROM player WHERE nickname = %s', [nickname])
+			cur.execute('SELECT id, nickname FROM player WHERE lower(nickname) = lower(%s)', [nickname])
 			result = cur.fetchone()
 			# Don't like overloading this...see what happens for now
 			if result is None:
-				return Player(None, nickname, None, None)
+				# return Player(None, nickname, None, None)
+				return None
 			else:
 				return Player(result.id, result.nickname, None, None)
+
+	def block_player(self, player, blocked_player_nickname):
+		with self.cursor() as cur:
+			cur.execute('''
+				SELECT block_player(%s, %s)
+				''', [player, blocked_player_nickname])
+			result = cur.fetchone()
+			return {
+				0: BlockResult(True, True, True, False),
+				1: BlockResult(False, True, False, False),
+				2: BlockResult(False, True, False, False),
+				3: BlockResult(True, False, False, True)
+			}[result]

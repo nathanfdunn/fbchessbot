@@ -18,6 +18,11 @@ autoreject strangers
 autoreject none				
 
 
+daily status off
+daily status on
+
+
+
 play against Nate white
 play against Nate black
 

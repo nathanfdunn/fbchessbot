@@ -10,6 +10,7 @@ from flask import Flask, request, send_file
 from PIL import Image, ImageDraw
 import requests
 
+import constants
 from constants import WHITE, BLACK, WHITE_WINS, BLACK_WINS, DRAW
 import dbactions
 try:
@@ -321,7 +322,7 @@ def block(sender, other):
 	elif other == constants.STRANGERS:
 		pass
 	else:
-		pass
+		result = db.block_player(sender, other)
 
 @command(require_person=True)
 def unblock(sender, other):

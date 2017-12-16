@@ -280,7 +280,11 @@ class TestOpponentContext(BaseTest):
 
 	def test_cannot_set_opponent_context_on_nonplayer(self):
 		self.handle_message(self.nate_id, 'Play against Dave', expected_replies=1)
-		self.assertLastMessageEquals(self.nate_id, "No player named 'Dave'")
+		self.assertLastMessageEquals(self.nate_id, 'There is no player by the name Dave')
+
+	def test_context_case_insensitive(self):
+		self.handle_message(self.nate_id, 'Play against cHAd', expected_replies=2)
+		self.assertLastMessageEquals(self.nate_id, 'You are now playing against Chad')
 
 class TestGameInitiation(BaseTest):
 	# expected_replies = 1
@@ -694,7 +698,7 @@ class TestMiscellaneous(GamePlayTest):
 		pass
 		# self.handle_message(self.nate_id, 'status', expected_replies=1)
 
-# @unittest.skip
+@unittest.skip
 class TestPlayerInteractions(BaseTest):
 	def init_blocks(self):
 		self.handle_message(self.nate_id, 'Play against Jess')
@@ -772,10 +776,19 @@ class TestPlayerInteractions(BaseTest):
 		self.assertLastMessageEquals(self.nate_id, 'You have unblocked Jess')
 		self.assertLastMessageEquals(self.jess_id, 'You have been unblocked by Nate')
 
+@unittest.skip
 class TestChallengeAcceptance(BaseTest):
-	def setUp():
+	def setUp(self):
 		self.register_all()
-		
+
+	def test_newly_registered_autoaccept(self):
+		self.handle_message(self.nate_id, 'Play against jess', expected_replies=2)
+		self.assertLastMessageEquals(self.nate_id, 'You are now playing against Jess')
+
+	def test_can_challenge_with_color(self):
+		self.handle_message(self.nate_id, 'Play against jess white', expected_replies=3)
+		self.handle_m
+
 # class TestBlocking(BaseTest):
 # 	def setUp(self):
 # 		self.register_all()
