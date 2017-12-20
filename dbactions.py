@@ -354,3 +354,17 @@ class DB:
 				''', [playerid, otherid])
 			result = cur.fetchone()[0]
 			return [(result & 1 > 0), (result & 2 > 0)]
+
+	def log_message(self, message, message_type, *, senderid=None, recipientid=None):
+		with self.cursor() as cur:
+			# TODO make a function I guess
+			cur.execute('''
+				INSERT INTO cb.message_log (
+					senderid,
+					recipientid,
+					message,
+					message_typeid
+				)
+				VALUES (%s, %s, %s, %s)
+				''', [senderid, recipientid, message, message_typeid])
+			cur.connection.commit()

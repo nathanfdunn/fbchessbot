@@ -10,6 +10,11 @@ class Color(enum.IntEnum):
 		else:
 			return self.__getattribute__(attr)
 
+class MessageType(enum.IntEnum):
+	PLAYER_MESSAGE = 1
+	CHESSBOT_TEXT = 2
+	CHESSBOT_IMAGE = 3
+
 BLACK = Color.BLACK
 WHITE = Color.WHITE
 

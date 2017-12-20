@@ -11,7 +11,7 @@ from PIL import Image, ImageDraw
 import requests
 
 import constants
-from constants import WHITE, BLACK, WHITE_WINS, BLACK_WINS, DRAW
+from constants import WHITE, BLACK, WHITE_WINS, BLACK_WINS, DRAW, MessageType
 import dbactions
 try:
 	import env
@@ -86,7 +86,7 @@ def messaging_events(payload):
 		if "message" in event and "text" in event["message"]:
 			yield event["sender"]["id"], event["message"]["text"]
 		else:
-			yield event["sender"]["id"], "I can't echo this"
+			yield event["sender"]["id"], "Invalid message"
 
 
 @app.route('/webhook', methods=['POST'])
@@ -94,6 +94,7 @@ def messages():
 	try:
 		for sender, message in messaging_events(request.get_data()):
 			sender, message = int(sender), message.strip()
+			db.message_log(message, MessageType.PLAYER_MESSAGE, senderid=sender)
 			handle_message(sender, message)
 	except Exception as e:
 		print('Error handling messages:', repr(e))
@@ -469,13 +470,13 @@ def send_pgn(recipient, game):
 	if r.status_code != requests.codes.ok:
 		print('Error I think:', r.text)
 
-
 def send_game_rep(recipient, game, perspective=True):
-	recipient = str(recipient)			# this is probably the one place it's necessary to be a string
+	message = game.image_url(perspective)
+	db.log_message(message, MessageType.CHESSBOT_IMAGE, recipientid=recipient)
 	r = requests.post('https://graph.facebook.com/v2.9/me/messages',
 		params={'access_token': PAGE_ACCESS_TOKEN},
 		data=json.dumps({
-			'recipient': {'id': recipient},
+			'recipient': {'id': str(recipient)},
 			'message': {
 				'attachment': {
 					'type': 'image',
@@ -497,7 +498,9 @@ def show_game_to_both(game):
 
 
 def send_message(recipient, text):
+	# Leave in the print for good measure
 	print('sending message: ', recipient, text)
+	db.log_message(text, MessageType.CHESSBOT_TEXT, recipientid=recipient)
 	r = requests.post('https://graph.facebook.com/v2.9/me/messages',
 		params={'access_token': PAGE_ACCESS_TOKEN},
 		data=json.dumps({

@@ -251,6 +251,19 @@ def migration11():
 		''')
 	cur.connection.commit()
 
+def migration12():
+	op()
+	cur.execute('''
+		CREATE TABLE cb.message_log ( --note, we use the schema here
+			id SERIAL PRIMARY KEY,
+			senderid BIGINT REFERENCES player(id),
+			recipientid BIGINT REFERENCES player(id),
+			message VARCHAR(1024),
+			-- Not worth another table: 1 = from player, 2 = text from chessbot, 3 = image from chessbot
+			message_typeid SMALLINT
+		)
+		''')
+
 def refresh_funcs():
 	# print('refreshing!')
 	with op() as cursor, open('dbfuncs.sql') as f:
@@ -279,7 +292,7 @@ def refresh_funcs():
 			$func$ LANGUAGE plpgsql;
 			SELECT pg_temp.f_delfunc('cb');
 			''')
-		
+
 		cursor.execute(f.read())
 		cursor.connection.commit()
 
