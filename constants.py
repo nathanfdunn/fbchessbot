@@ -31,3 +31,16 @@ EVERYONE = 'everyone'
 STRANGERS = 'strangers'
 
 special_nicknames = [EVERYONE, STRANGERS]
+
+
+
+
+deactivation_message = (
+	'You have been deactivated. '
+	'You will no longer receive messages from Chessbot. '
+	'Say "activate" at any time to be reactivated.'
+	)
+
+activation_message = (
+	'You have been reactivated. Welcome back!'
+	)

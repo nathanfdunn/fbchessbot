@@ -8,6 +8,7 @@ import unittest
 import chess
 import psycopg2
 
+import constants
 import dbactions
 from dbtools import refresh_funcs
 import fbchessbot
@@ -63,6 +64,12 @@ class CustomAssertions:
 		last_rep = reps[target_index]
 		# This only works because we're multiply inheriting from unittest.TestCase as well
 		self.assertEqual(last_rep, rep_url)
+
+# This is the new preferred way to do it. Replace all other references at some point
+nateid = 32233848429
+chadid = 83727482939
+jessid = 47463849663
+izzyid = 28394578322
 
 class BaseTest(unittest.TestCase, CustomAssertions):
 	expected_replies = None
@@ -805,6 +812,48 @@ class TestPlayerInteractions(BaseTest):
 		self.assertLastMessageEquals(self.nate_id, 'You have unblocked Jess')
 		self.assertLastMessageEquals(self.jess_id, 'You have been unblocked by Nate')
 
+class TestActivation(BaseTest):
+	def setUp(self):
+		self.register_all()
+
+	def test_can_deactivate(self):
+		self.handle_message(nateid, 'deactivate', expected_replies=1)
+		self.assertLastMessageEquals(nateid, constants.deactivation_message)
+
+	def test_can_reactivate(self):
+		self.handle_message(nateid, 'activate', expected_replies=1)
+		self.assertLastMessageEquals(nateid, constants.activation_message)
+
+	def test_deactivated_player_cant_be_played_against(self):
+		self.handle_message(nateid, 'Play against Jess')
+		self.handle_message(nateid, 'New game white')
+		self.handle_message(nateid, 'e4')
+		self.handle_message(nateid, 'deactivate')
+		self.handle_message(jessid, 'e5', expected_replies=1)
+		self.assertLastMessageEquals(jessid, 'Nate has left Chessbot')
+
+	def test_deactivated_player_cant_be_challenged(self):
+		self.handle_message(nateid, 'deactivate')
+		self.handle_message(jessid, 'Play against Nate', expected_replies=1)
+		self.assertLastMessageEquals(jessid, 'Nate has left Chessbot')
+
+	def test_deactivated_player_can_get_old_games(self):
+		pass
+
+	@unittest.expectedFailure
+	def test_redundant_deactivation(self):
+		self.handle_message(nateid, 'deactivate', expected_replies=1)
+		self.handle_message(nateid, 'deactivate', expected_replies=1)
+		self.assertLastMessageEquals(nateid, 'You are already deactivated')
+
+	@unittest.expectedFailure
+	def test_redundant_activation(self):
+		# self.handle_message(nateid, 'activate', expected_replies=None)
+		self.handle_message(nateid, 'activate', expected_replies=1)
+		self.assertLastMessageEquals(nateid, 'You are already activated')
+
+
+
 @unittest.skip
 class TestChallengeAcceptance(BaseTest):
 	def setUp(self):
@@ -816,7 +865,6 @@ class TestChallengeAcceptance(BaseTest):
 
 	def test_can_challenge_with_color(self):
 		self.handle_message(self.nate_id, 'Play against jess white', expected_replies=3)
-		self.handle_m
 
 # class TestBlocking(BaseTest):
 # 	def setUp(self):

@@ -157,6 +157,10 @@ def command(function=None, *, require_game=False, allow_anonymous=False, require
 
 			if require_game:
 				player, opponent, game = db.get_context(sender)
+				if opponent is not None and not db.player_is_active(opponent.id):
+					send_message(sender, f'{opponent.nickname} has left Chessbot')
+					return True
+					
 				if game:
 					kwargs.update(player=player, opponent=opponent, game=game)
 				else:
@@ -348,6 +352,15 @@ def unblock(sender, other):
 	else:
 		pass
 
+@command
+def deactivate(sender):
+	db.set_player_activation(sender, False)
+	send_message(sender, constants.deactivation_message)
+
+@command
+def activate(sender):
+	db.set_player_activation(sender, True)
+	send_message(sender, constants.activation_message)
 
 def normalize_move(game, move):
 	if not move:

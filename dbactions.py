@@ -368,3 +368,24 @@ class DB:
 				VALUES (%s, %s, %s, %s)
 				''', [senderid, recipientid, message, message_typeid])
 			cur.connection.commit()
+
+	def deactivate_player(self, playerid):
+		with self.cursor() as cur:
+			cur.execute('''
+				UPDATE player SET active = FALSE WHERE id = %s
+				''', [playerid])
+			cur.connection.commit()
+
+	def set_player_activation(self, playerid, activate):
+		with self.cursor() as cur:
+			cur.execute('''
+				UPDATE player SET active = %s WHERE id = %s
+				''', [activate, playerid])
+			cur.connection.commit()
+
+	def player_is_active(self, playerid):
+		with self.cursor() as cur:
+			cur.execute('''
+				SELECT active FROM player WHERE id = %s
+				''', [playerid])
+			return cur.fetchone()[0]
