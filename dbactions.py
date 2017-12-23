@@ -26,7 +26,7 @@ DATABASE_URL = os.environ['DATABASE_URL']
 # 	def isregistered(self):
 # 		return self.id is not None
 
-Player = collections.namedtuple('Player', 'id nickname opponentid color')
+Player = collections.namedtuple('Player', 'id nickname opponentid color active')
 
 BlockResult = collections.namedtuple('BlockResult', 'success sender_not_found blocked_not_found is_redundant')
 
@@ -200,23 +200,29 @@ class DB:
 			cur.connection.commit()
 
 	# Returns specified Player, opponent Player, active Game
-	def get_context(self, player_id):
+	def get_context(self, playerid):
 		with self.cursor() as cur:
-			cur.execute("""
-				SELECT
-					p.id AS playerid, p.nickname AS player_nickname, p.opponent_context AS player_opponentid,
-					o.id AS opponentid, o.nickname AS opponent_nickname, o.opponent_context AS opponent_opponentid,
-					g.id AS gameid, g.board, g.active, g.whiteplayer, g.blackplayer, g.undo, g.outcome
-				FROM player p
-				LEFT JOIN player o ON p.opponent_context = o.id
-				LEFT JOIN games g ON (
-						(g.whiteplayer = p.id AND g.blackplayer = o.id) 
-						OR 
-						(g.blackplayer = p.id AND g.whiteplayer = o.id)
-					)
-					AND (g.active = TRUE)
-				WHERE p.id = %s
-				""", [player_id])
+			# cur.execute("""
+			# 	SELECT
+			# 		p.id AS playerid, p.nickname AS player_nickname, p.opponent_context AS player_opponentid,
+			# 		o.id AS opponentid, o.nickname AS opponent_nickname, o.opponent_context AS opponent_opponentid,
+			# 		g.id AS gameid, g.board, g.active, g.whiteplayer, g.blackplayer, g.undo, g.outcome
+			# 	FROM player p
+			# 	LEFT JOIN player o ON p.opponent_context = o.id
+			# 	LEFT JOIN games g ON (
+			# 			(g.whiteplayer = p.id AND g.blackplayer = o.id) 
+			# 			OR 
+			# 			(g.blackplayer = p.id AND g.whiteplayer = o.id)
+			# 		)
+			# 		AND (g.active = TRUE)
+			# 	WHERE p.id = %s
+			# 	""", [player_id])
+			cur.execute('''
+				SELECT playerid, player_nickname, player_opponentid, player_active,
+					opponentid, opponent_nickname, opponent_opponentid, opponent_active,
+					gameid, board, active, whiteplayer, blackplayer, undo, outcome
+				FROM cb.get_context(%s)
+				''', [playerid])
 			row = cur.fetchone()
 			if row is None:						# user isn't even registered
 				return None, None, None
@@ -225,16 +231,16 @@ class DB:
 				player_color = None 			# so they have no color
 				opponent_color = None
 			else:
-				player_color = constants.WHITE if player_id == row.whiteplayer else constants.BLACK
+				player_color = constants.WHITE if playerid == row.whiteplayer else constants.BLACK
 				opponent_color = not player_color
 
-			player = Player(row.playerid, row.player_nickname, row.player_opponentid, player_color)
+			player = Player(row.playerid, row.player_nickname, row.player_opponentid, player_color, row.player_active)
 			if row.opponentid is None:
 				opponent = None
 			else:
-				opponent = Player(row.opponentid, row.opponent_nickname, row.opponent_opponentid, opponent_color)
+				opponent = Player(row.opponentid, row.opponent_nickname, row.opponent_opponentid, opponent_color, row.opponent_active)
 
-			if row.whiteplayer == player_id:
+			if row.whiteplayer == playerid:
 				whiteplayer = player
 				blackplayer = opponent
 			else:
@@ -330,14 +336,14 @@ class DB:
 	def player_from_nickname(self, nickname):
 		with self.cursor() as cur:
 			# cur.execute('SELECT id, nickname FROM player WHERE lower(nickname) = lower(%s)', [nickname])
-			cur.execute('SELECT id, nickname FROM player WHERE id = cb.get_playerid(%s)', [nickname])
+			cur.execute('SELECT id, nickname, active FROM player WHERE id = cb.get_playerid(%s)', [nickname])
 			result = cur.fetchone()
 			# Don't like overloading this...see what happens for now
 			if result is None:
 				# return Player(None, nickname, None, None)
 				return None
 			else:
-				return Player(result.id, result.nickname, None, None)
+				return Player(result.id, result.nickname, None, None, result.active)
 
 	def block_player(self, player, blocked_player_nickname):
 		with self.cursor() as cur:

@@ -67,4 +67,31 @@ BEGIN
 END
 $$ LANGUAGE plpgsql;
 
-
+-- Given a player id, gets the player object, the opponent (if they have any), 
+-- and the game (if there is an active game between them)
+CREATE OR REPLACE FUNCTION cb.get_context(
+	_playerid BIGINT
+)
+RETURNS TABLE (
+	playerid BIGINT, player_nickname VARCHAR(32), player_opponentid BIGINT, player_active BOOLEAN,
+	opponentid BIGINT, opponent_nickname VARCHAR(32), opponent_opponentid BIGINT, opponent_active BOOLEAN,
+	gameid INT, board BYTEA, active BOOLEAN, whiteplayer BIGINT, blackplayer BIGINT, undo BOOLEAN, outcome INT
+)
+AS
+$$
+BEGIN
+	RETURN QUERY SELECT
+		p.id AS playerid, p.nickname AS player_nickname, p.opponent_context AS player_opponentid, p.active AS player_active,
+		o.id AS opponentid, o.nickname AS opponent_nickname, o.opponent_context AS opponent_opponentid, o.active AS opponent_active,
+		g.id AS gameid, g.board, g.active, g.whiteplayer, g.blackplayer, g.undo, g.outcome
+	FROM player p
+	LEFT JOIN player o ON p.opponent_context = o.id
+	LEFT JOIN games g ON (
+			(g.whiteplayer = p.id AND g.blackplayer = o.id) 
+			OR 
+			(g.blackplayer = p.id AND g.whiteplayer = o.id)
+		)
+		AND (g.active = TRUE)
+	WHERE p.id = _playerid;
+END
+$$ LANGUAGE plpgsql;

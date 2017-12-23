@@ -160,7 +160,7 @@ def command(function=None, *, require_game=False, allow_anonymous=False, require
 				if opponent is not None and not db.player_is_active(opponent.id):
 					send_message(sender, f'{opponent.nickname} has left Chessbot')
 					return True
-					
+
 				if game:
 					kwargs.update(player=player, opponent=opponent, game=game)
 				else:
@@ -255,6 +255,9 @@ def play_against(sender, other):
 	current_opponentid = db.get_opponent_context(sender)
 	opponentid = other.id
 	blocked = db.is_blocked(sender, other.id)
+	if not other.active:
+		send_message(sender, f'{other.nickname} has left Chessbot')
+		return;
 	if blocked[0]:
 		send_message(sender, f'You have blocked {other.nickname}')
 		return;
@@ -412,6 +415,10 @@ def handle_move(sender, message):
 
 	if not game.is_active_player(player.id):
 		send_message(sender, "It isn't your turn")
+		return
+
+	if not opponent.active:
+		send_message(sender, f'{opponent.nickname} has left Chessbot')
 		return
 
 	move = normalize_move(game, message)
