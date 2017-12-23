@@ -14,25 +14,39 @@ $$ LANGUAGE plpgsql;
 
 CREATE OR REPLACE FUNCTION cb.block_player(
 	_playerid BIGINT,
-	_targetid BIGINT
+	_targetid BIGINT,
+	_block BOOLEAN
 )
 RETURNS INT
 AS
 $$
 BEGIN
-	IF EXISTS(
-		SELECT * 
-		FROM player_blockage
-		WHERE playerid = _playerid AND blocked_playerid = _targetid
-		)
-	THEN
-		RETURN 1;	-- Redundant
+	IF _block THEN
+		IF EXISTS(
+			SELECT * 
+			FROM player_blockage
+			WHERE playerid = _playerid AND blocked_playerid = _targetid
+			)
+		THEN
+			RETURN 1;	-- Redundant
+		END IF;
+
+		INSERT INTO player_blockage (playerid, blocked_playerid)
+		VALUES (_playerid, _targetid);
+		RETURN 0;		-- Success
+	ELSE
+		IF NOT EXISTS(
+			SELECT * 
+			FROM player_blockage
+			WHERE playerid = _playerid AND blocked_playerid = _targetid
+			)
+		THEN
+			RETURN 1;	-- Redundant
+		END IF;
+
+		DELETE FROM player_blockage WHERE playerid = _playerid AND blocked_playerid = _targetid;
+		RETURN 0;		-- Success
 	END IF;
-
-	INSERT INTO player_blockage (playerid, blocked_playerid)
-	VALUES (_playerid, _targetid);
-	RETURN 0;		-- Success
-
 END
 $$ LANGUAGE plpgsql;
 

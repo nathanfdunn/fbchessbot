@@ -338,12 +338,12 @@ def block(sender, other):
 		pass
 	else:
 		result = db.block_player(sender, other.id)
-		if result == 1:
-			send_message(sender, f'You have already blocked {other.nickname}')
-		else:
+		if result == 0:
 			send_message(sender, f'You have blocked {other.nickname}')
 			blocker_name = db.nickname_from_id(sender)
 			send_message(other.id, f'You have been blocked by {blocker_name}')
+		else:
+			send_message(sender, f'You have already blocked {other.nickname}')
 
 
 @command(require_person=True)
@@ -353,7 +353,14 @@ def unblock(sender, other):
 	elif other == constants.STRANGERS:
 		pass
 	else:
-		pass
+		result = db.unblock_player(sender, other.id)
+		if result == 0:
+			send_message(sender, f'You have unblocked {other.nickname}')
+			unblocker_name = db.nickname_from_id(sender)
+			send_message(other.id, f'You have been unblocked by {unblocker_name}')
+		else:
+			send_message(sender, f'{other.nickname} was already unblocked')
+
 
 @command
 def deactivate(sender):

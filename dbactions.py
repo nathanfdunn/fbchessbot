@@ -345,11 +345,19 @@ class DB:
 			else:
 				return Player(result.id, result.nickname, None, None, result.active)
 
-	def block_player(self, player, blocked_player_nickname):
+	def block_player(self, playerid, targetid):
 		with self.cursor() as cur:
 			cur.execute('''
-				SELECT cb.block_player(%s, %s)
-				''', [player, blocked_player_nickname])
+				SELECT cb.block_player(%s, %s, TRUE)
+				''', [playerid, targetid])
+			cur.connection.commit()
+			return cur.fetchone()[0]
+
+	def unblock_player(self, playerid, targetid):
+		with self.cursor() as cur:
+			cur.execute('''
+				SELECT cb.block_player(%s, %s, FALSE)
+				''', [playerid, targetid])
 			cur.connection.commit()
 			return cur.fetchone()[0]
 

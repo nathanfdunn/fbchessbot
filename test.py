@@ -804,9 +804,9 @@ class TestPlayerInteractions(BaseTest):
 	def test_can_block_during_game(self):
 		pass
 
-	@unittest.expectedFailure
+	# @unittest.expectedFailure
 	def test_can_unblock(self):
-		self.handle_message(self.nate_id, 'Block jess', expected_replies=None)
+		self.handle_message(self.nate_id, 'Block jess', expected_replies=2)
 
 		self.handle_message(self.nate_id, 'Unblock jess', expected_replies=2)
 		self.assertLastMessageEquals(self.nate_id, 'You have unblocked Jess')
@@ -840,13 +840,14 @@ class TestActivation(BaseTest):
 	def test_deactivated_player_can_get_old_games(self):
 		pass
 
-	@unittest.expectedFailure
+	# No need
+	@unittest.skip
 	def test_redundant_deactivation(self):
 		self.handle_message(nateid, 'deactivate', expected_replies=1)
 		self.handle_message(nateid, 'deactivate', expected_replies=1)
 		self.assertLastMessageEquals(nateid, 'You are already deactivated')
 
-	@unittest.expectedFailure
+	@unittest.skip
 	def test_redundant_activation(self):
 		# self.handle_message(nateid, 'activate', expected_replies=None)
 		self.handle_message(nateid, 'activate', expected_replies=1)
