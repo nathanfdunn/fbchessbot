@@ -432,34 +432,39 @@ class TestGamePlay(GamePlayTest):
 		self.assertLastMessageEquals(self.jess_id, "It isn't your turn")
 
 
-	def test_cannot_make_ambiguous_move(self):
+	def test_ambiguous_move(self):
 		self.perform_moves(self.nate_id, self.jess_id, [('e4', 'f5'), ('c4', 'd5')])
-		self.handle_message(self.nate_id, 'd5', expected_replies=1)
-		self.assertLastMessageEquals(self.nate_id, 'That move could refer to two or more pieces')
-	
-	@unittest.skip
-	def test_can_qualify_ambiguous_move(self):
-		with self.subTest('qualify file'):
-			self.perform_moves(self.nate_id, self.jess_id, [('e4', 'f5'), ('c4', 'd5')])
-			self.handle_message(self.nate_id, 'cd5', expected_replies=1)
 
+		with self.subTest('cannot make ambiguous move'):
+			self.handle_message(self.nate_id, 'd5', expected_replies=1)
+			self.assertLastMessageEquals(self.nate_id, 'That move could refer to two or more pieces')
+		
 		with self.subTest('rank still ambiguous'):
+			# self.perform_moves(self.nate_id, self.jess_id, [('e4', 'f5'), ('c4', 'd5')])
+			self.handle_message(self.nate_id, '4d5', expected_replies=1)
+			self.assertLastMessageEquals(self.nate_id, 'That move could refer to two or more pieces')
+
+		with self.subTest('can qualify file'):
 			self.perform_moves(self.nate_id, self.jess_id, [('e4', 'f5'), ('c4', 'd5')])
-			self.handle_message(self.nate_id, 'cd5', expected_replies=1)
+			self.handle_message(self.nate_id, 'cd5', expected_replies=3)
+			self.assertLastGameRepEquals(self.nate_id, 'rnbqkbnr-ppp1p1pp-8-3P1p2-4P3-8-PP1P1PPP-RNBQKBNR')
 
 
-	# @unittest.expectedFailure			# Don't know why it's failing....
-	def test_cannot_make_ambiguous_moveII(self):
+	def test_ambiguous_moveII(self):
 		self.perform_moves(self.nate_id, self.jess_id, [('Nf3', 'h6'), ('Na3', 'g6'), ('Nc4', 'a6')], False)
-		global problemboard
-		problemboard = self.db.get_context(self.nate_id)
-		self.handle_message(self.nate_id, 'Ne5', expected_replies=1)
-		self.assertLastMessageEquals(self.nate_id, 'That move could refer to two or more pieces')
+		# global problemboard
+		# problemboard = self.db.get_context(self.nate_id)
+		with self.subTest('cannot make ambiguous move'):
+			self.handle_message(self.nate_id, 'Ne5', expected_replies=1)
+			self.assertLastMessageEquals(self.nate_id, 'That move could refer to two or more pieces')
 
-	@unittest.skip
-	def test_can_qualify_ambiguous_move(self):
-		self.perform_moves(self.nate_id, self.jess_id, [('e4', 'f5'), ('c4', 'd5')])
-		self.handle_message(self.nate_id, 'cd5', expected_replies=1)
+		with self.subTest('can qualify ambiguous move'):
+			self.handle_message(self.nate_id, 'Nfe5', expected_replies=3)
+			self.assertLastGameRepEquals(self.nate_id, 'rnbqkbnr-1ppppp2-p5pp-4N3-2N5-8-PPPPPPPP-R1BQKB1R')
+	# @unittest.skip
+	# def test_can_qualify_ambiguous_move(self):
+	# 	self.perform_moves(self.nate_id, self.jess_id, [('e4', 'f5'), ('c4', 'd5')])
+	# 	self.handle_message(self.nate_id, 'cd5', expected_replies=1)
 
 
 	@unittest.skip
