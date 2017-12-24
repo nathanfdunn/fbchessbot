@@ -33,7 +33,7 @@ STRANGERS = 'strangers'
 special_nicknames = [EVERYONE, STRANGERS]
 
 
-
+# Yeah, this should be in a different module
 
 deactivation_message = (
 	'You have been deactivated. '

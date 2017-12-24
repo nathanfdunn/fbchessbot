@@ -152,7 +152,18 @@ def command(function=None, *, require_game=False, allow_anonymous=False, require
 					if other_player is None:
 						send_message(sender, f'There is no player by the name {nickname}')
 						return True
+					elif not other_player.active:
+						send_message(sender, f'{other_player.nickname} has left Chessbot')
+						return True;
 					else:
+						blockage = db.is_blocked(sender, other_player.id)
+						if blockage[0]:
+							send_message(sender, f'You have blocked {other_player.nickname}')
+							return True
+						elif blockage[1]:
+							send_message(sender, f'You have been blocked by {other_player.nickname}')
+							return True
+
 						kwargs['other'] = other_player
 
 			if require_game:
@@ -255,15 +266,17 @@ def play_against(sender, other):
 	current_opponentid = db.get_opponent_context(sender)
 	opponentid = other.id
 	blocked = db.is_blocked(sender, other.id)
-	if not other.active:
-		send_message(sender, f'{other.nickname} has left Chessbot')
-		return;
-	if blocked[0]:
-		send_message(sender, f'You have blocked {other.nickname}')
-		return;
-	elif blocked[1]:
-		send_message(sender, f'You have been blocked by {other.nickname}')
-		return
+
+	# This should be ok...?
+	# if not other.active:
+	# 	send_message(sender, f'{other.nickname} has left Chessbot')
+	# 	return;
+	# if blocked[0]:
+	# 	send_message(sender, f'You have blocked {other.nickname}')
+	# 	return;
+	# elif blocked[1]:
+	# 	send_message(sender, f'You have been blocked by {other.nickname}')
+	# 	return
 
 	if current_opponentid == opponentid:
 		send_message(sender, f'You are already playing against {other.nickname}')
@@ -330,36 +343,50 @@ def status(sender):
 def stats(sender):
 	pass
 
-@command(require_person=True)
-def block(sender, other):
+# @command(require_person=True)
+@command(receive_args=True)
+def block(other, sender):
 	if other == constants.EVERYONE:
 		pass
 	elif other == constants.STRANGERS:
 		pass
 	else:
-		result = db.block_player(sender, other.id)
+		otherid = db.id_from_nickname(other)
+		other_nickname = db.nickname_from_id(otherid)		# get canonical nickname
+		result = db.block_player(sender, otherid)
 		if result == 0:
-			send_message(sender, f'You have blocked {other.nickname}')
-			blocker_name = db.nickname_from_id(sender)
-			send_message(other.id, f'You have been blocked by {blocker_name}')
+			send_message(sender, f'You have blocked {other_nickname}')
+			# blocker_name = db.nickname_from_id(sender)
+			# send_message(otherid, f'You have been blocked by {blocker_name}')
 		else:
-			send_message(sender, f'You have already blocked {other.nickname}')
+			send_message(sender, f'You have already blocked {other_nickname}')
 
 
-@command(require_person=True)
-def unblock(sender, other):
+# @command(require_person=True)
+@command(receive_args=True)
+def unblock(other, sender):
 	if other == constants.EVERYONE:
 		pass
 	elif other == constants.STRANGERS:
 		pass
 	else:
-		result = db.unblock_player(sender, other.id)
+		otherid = db.id_from_nickname(other)
+		other_nickname = db.nickname_from_id(otherid)		# get canonical nickname
+		result = db.unblock_player(sender, otherid)
 		if result == 0:
-			send_message(sender, f'You have unblocked {other.nickname}')
-			unblocker_name = db.nickname_from_id(sender)
-			send_message(other.id, f'You have been unblocked by {unblocker_name}')
+			send_message(sender, f'You have unblocked {other_nickname}')
+			# unblocker_name = db.nickname_from_id(sender)
+			# send_message(otherid, f'You have been unblocked by {unblocker_name}')
 		else:
-			send_message(sender, f'{other.nickname} was already unblocked')
+			send_message(sender, f'You have already blocked {other_nickname}')
+
+		# result = db.unblock_player(sender, other.id)
+		# if result == 0:
+		# 	send_message(sender, f'You have unblocked {other.nickname}')
+		# 	unblocker_name = db.nickname_from_id(sender)
+		# 	send_message(other.id, f'You have been unblocked by {unblocker_name}')
+		# else:
+		# 	send_message(sender, f'{other.nickname} was already unblocked')
 
 
 @command

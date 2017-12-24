@@ -431,25 +431,36 @@ class TestGamePlay(GamePlayTest):
 		self.handle_message(self.jess_id, 'e5', expected_replies=1)
 		self.assertLastMessageEquals(self.jess_id, "It isn't your turn")
 
-	def test_cannot_make_ambiguous_move(self):
-		with self.subTest('Ambiguous pawn move'):
-			self.perform_moves(self.nate_id, self.jess_id, [('e4', 'f5'), ('c4', 'd5')])
-			self.handle_message(self.nate_id, 'd5', expected_replies=1)
-			self.assertLastMessageEquals(self.nate_id, 'That move could refer to two or more pieces')
 
-	@unittest.expectedFailure			# Don't know why it's failing....
+	def test_cannot_make_ambiguous_move(self):
+		self.perform_moves(self.nate_id, self.jess_id, [('e4', 'f5'), ('c4', 'd5')])
+		self.handle_message(self.nate_id, 'd5', expected_replies=1)
+		self.assertLastMessageEquals(self.nate_id, 'That move could refer to two or more pieces')
+	
+	@unittest.skip
+	def test_can_qualify_ambiguous_move(self):
+		with self.subTest('qualify file'):
+			self.perform_moves(self.nate_id, self.jess_id, [('e4', 'f5'), ('c4', 'd5')])
+			self.handle_message(self.nate_id, 'cd5', expected_replies=1)
+
+		with self.subTest('rank still ambiguous'):
+			self.perform_moves(self.nate_id, self.jess_id, [('e4', 'f5'), ('c4', 'd5')])
+			self.handle_message(self.nate_id, 'cd5', expected_replies=1)
+
+
+	# @unittest.expectedFailure			# Don't know why it's failing....
 	def test_cannot_make_ambiguous_moveII(self):
-		with self.subTest('Ambiguous knight move'):
-			self.perform_moves(self.nate_id, self.jess_id, [('Nf3', 'h3'), ('Na3', 'g3'), ('Nc4', 'a3')])
-			global problemboard
-			problemboard = self.db.get_context(self.nate_id)
-			self.handle_message(self.nate_id, 'Ne6', expected_replies=1)
-			self.assertLastMessageEquals(self.nate_id, 'That move could refer to two or more pieces')
+		self.perform_moves(self.nate_id, self.jess_id, [('Nf3', 'h6'), ('Na3', 'g6'), ('Nc4', 'a6')], False)
+		global problemboard
+		problemboard = self.db.get_context(self.nate_id)
+		self.handle_message(self.nate_id, 'Ne5', expected_replies=1)
+		self.assertLastMessageEquals(self.nate_id, 'That move could refer to two or more pieces')
 
 	@unittest.skip
 	def test_can_qualify_ambiguous_move(self):
 		self.perform_moves(self.nate_id, self.jess_id, [('e4', 'f5'), ('c4', 'd5')])
-		self.handle_message(self.nate_id, 'd5', expected_replies=1)
+		self.handle_message(self.nate_id, 'cd5', expected_replies=1)
+
 
 	@unittest.skip
 	def test_can_qualify_unambiguous_move(self):
@@ -722,9 +733,9 @@ class TestPlayerInteractions(BaseTest):
 
 	def test_can_block_newly_registered(self):
 		with self.subTest('Block notifications'):
-			self.handle_message(self.nate_id, 'Block jess', expected_replies=2)
+			self.handle_message(self.nate_id, 'Block jess', expected_replies=1)
 			self.assertLastMessageEquals(self.nate_id, 'You have blocked Jess')
-			self.assertLastMessageEquals(self.jess_id, 'You have been blocked by Nate')
+			# self.assertLastMessageEquals(self.jess_id, 'You have been blocked by Nate')
 
 		with self.subTest('Block effects'):
 			self.handle_message(self.nate_id, 'Play against Jess', expected_replies=1)
@@ -734,14 +745,14 @@ class TestPlayerInteractions(BaseTest):
 			self.assertLastMessageEquals(self.jess_id, 'You have been blocked by Nate')
 
 	def test_can_block_redundant(self):
-		self.handle_message(self.nate_id, 'Block jess', expected_replies=2)
+		self.handle_message(self.nate_id, 'Block jess', expected_replies=1)
 		self.handle_message(self.nate_id, 'Block jess', expected_replies=1)
 		self.assertLastMessageEquals(self.nate_id, 'You have already blocked Jess')
 
 	def test_can_mutual_block(self):
-		self.handle_message(self.nate_id, 'Block jess', expected_replies=2)
-		self.handle_message(self.jess_id, 'Block nate', expected_replies=2)
-		self.assertLastMessageEquals(self.nate_id, 'You have been blocked by Jess')
+		self.handle_message(self.nate_id, 'Block jess', expected_replies=1)
+		self.handle_message(self.jess_id, 'Block nate', expected_replies=1)
+		# self.assertLastMessageEquals(self.nate_id, 'You have been blocked by Jess')
 		self.assertLastMessageEquals(self.jess_id, 'You have blocked Nate')
 
 		with self.subTest('Self block message dominates'):
@@ -806,11 +817,11 @@ class TestPlayerInteractions(BaseTest):
 
 	# @unittest.expectedFailure
 	def test_can_unblock(self):
-		self.handle_message(self.nate_id, 'Block jess', expected_replies=2)
+		self.handle_message(self.nate_id, 'Block jess', expected_replies=1)
 
-		self.handle_message(self.nate_id, 'Unblock jess', expected_replies=2)
+		self.handle_message(self.nate_id, 'Unblock jess', expected_replies=1)
 		self.assertLastMessageEquals(self.nate_id, 'You have unblocked Jess')
-		self.assertLastMessageEquals(self.jess_id, 'You have been unblocked by Nate')
+		# self.assertLastMessageEquals(self.jess_id, 'You have been unblocked by Nate')
 
 class TestActivation(BaseTest):
 	def setUp(self):
