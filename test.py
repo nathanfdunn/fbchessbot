@@ -16,8 +16,6 @@ import fbchessbot
 # Want to refresh early and often
 refresh_funcs()
 
-intro = "Hi! Why don't you introduce yourself? (say My name is <name>)"
-
 sent_messages = defaultdict(list)
 def mock_send_message(recipient, text):
 	recipient = recipient
@@ -43,9 +41,14 @@ fbchessbot.send_message = mock_send_message
 fbchessbot.send_game_rep = mock_send_game_rep
 fbchessbot.send_pgn = mock_send_pgn
 
-_sentinel = object()
+nateid = 32233848429
+chadid = 83727482939
+jessid = 47463849663
+izzyid = 28394578322
 
-class CustomAssertions:
+class BaseTest(unittest.TestCase):
+	expected_replies = None
+
 	def assertLastMessageEquals(self, recipient, text, *, target_index=-1):
 		# recipient = str(recipient)
 		messages = sent_messages[recipient]
@@ -65,24 +68,15 @@ class CustomAssertions:
 		# This only works because we're multiply inheriting from unittest.TestCase as well
 		self.assertEqual(last_rep, rep_url)
 
-nateid = 32233848429
-chadid = 83727482939
-jessid = 47463849663
-izzyid = 28394578322
-
-class BaseTest(unittest.TestCase, CustomAssertions):
-	expected_replies = None
-
-	def register_player(self, player_name, player_id=None):
-		if player_id is None:
-			player_id = {
+	def register_player(self, player_name, playerid=None):
+		if playerid is None:
+			playerid = {
 				'nate': nateid,
 				'chad': chadid,
 				'jess': jessid,
 				'izzy': izzyid
 			}[player_name.lower()]
-		# Verify this was successful
-		self.handle_message(player_id, f'My name is {player_name}', expected_replies=1)
+		self.handle_message(playerid, f'My name is {player_name}', expected_replies=1)
 
 	def register_all(self):
 		self.register_player('Nate')
@@ -95,10 +89,6 @@ class BaseTest(unittest.TestCase, CustomAssertions):
 	def setUpClass(cls):
 		cls.db = dbactions.DB()
 		cls.db.delete_all()
-		# cls.nate_id = 32233848429
-		# cls.chad_id = 83727482939
-		# cls.jess_id = 47463849663
-		# cls.izzy_id = 28394578322
 
 	@classmethod
 	def tearDownClass(cls):
@@ -109,19 +99,18 @@ class BaseTest(unittest.TestCase, CustomAssertions):
 		self.db.delete_all()
 		clear_mocks()
 
-	def handle_message(self, recipient, message, *, expected_replies=_sentinel):
+	def handle_message(self, recipient, message, *, expected_replies=None):
 		'''Utility method for player input. Accounts for possibility of unexpected replies'''
-		if expected_replies is _sentinel:
-			expected_replies = self.expected_replies
-
-		num_replies_start = sum(len(messages) for messages in sent_messages.values()) + \
-							sum(len(games) for games in sent_game_reps.values()) + \
-							sum(len(pgns) for pgns in sent_pgns.values())
+		num_replies_start = (sum(len(messages) for messages in sent_messages.values()) +
+								sum(len(games) for games in sent_game_reps.values()) +
+								sum(len(pgns) for pgns in sent_pgns.values())
+								)
 
 		fbchessbot.handle_message(recipient, message)
-		num_replies_finish = sum(len(messages) for messages in sent_messages.values()) + \
-							sum(len(games) for games in sent_game_reps.values()) + \
-							sum(len(pgns) for pgns in sent_pgns.values())
+		num_replies_finish = (sum(len(messages) for messages in sent_messages.values()) +
+								sum(len(games) for games in sent_game_reps.values()) +
+								sum(len(pgns) for pgns in sent_pgns.values())
+								)
 		actual_replies = num_replies_finish - num_replies_start
 		
 		if expected_replies is not None and actual_replies != expected_replies:
@@ -129,9 +118,6 @@ class BaseTest(unittest.TestCase, CustomAssertions):
 
 	# For setting up the board
 	def perform_moves(self, white_id, black_id, move_list, clear=True):
-		# while move_list:
-			# move_pair = move_list.pop(0)
-			# print(move_pair, len(move_pair))
 		for move_pair in move_list:
 			self.handle_message(white_id, move_pair[0], expected_replies=None)
 			if len(move_pair) > 1:
@@ -140,22 +126,12 @@ class BaseTest(unittest.TestCase, CustomAssertions):
 			clear_mocks()
 
 class TestUnregisteredResponses(BaseTest):
-	# def setUp(self):
-	# 	self.db.delete_all()
-	# 	clear_mocks()
-
 	def test_does_display_intro(self):
 		newb = 12345678910
 		self.handle_message(newb, 'Hi', expected_replies=1)
-		self.assertLastMessageEquals(newb, intro)
+		self.assertLastMessageEquals(newb, constants.intro)
 
 class TestRegistration(BaseTest):
-	# expected_replies = 1
-
-	# def setUp(self):
-	# 	self.db.delete_all()
-	# 	clear_mocks()
-
 	def test_can_register(self):
 		with self.subTest(player='Nate'):
 			self.handle_message(nateid, 'My name is Nate')
@@ -250,13 +226,7 @@ class TestOpponentContext(BaseTest):
 	expected_replies = 1
 
 	def setUp(self):
-		# self.db.delete_all()
 		self.register_all()
-		# # self.handle_message(nateid, 'My name is Nate', expected_replies=None)
-		# # self.handle_message(chadid, 'My name is Chad', expected_replies=None)
-		# # self.handle_message(jessid, 'My name is Jess', expected_replies=None)
-		# # self.handle_message(izzyid, 'My name is Izzy', expected_replies=None)
-		# Just so we can be sure these two are playing each other
 		self.handle_message(izzyid, 'Play against Jess', expected_replies=None)
 		self.handle_message(jessid, 'Play against Izzy', expected_replies=None)
 		clear_mocks()
@@ -296,12 +266,7 @@ class TestGameInitiation(BaseTest):
 	# expected_replies = 1
 
 	def setUp(self):
-		# self.db.delete_all()
 		self.register_all()
-		# # self.handle_message(nateid, 'My name is Nate', expected_replies=None)
-		# # self.handle_message(chadid, 'My name is Chad', expected_replies=None)
-		# # self.handle_message(jessid, 'My name is Jess', expected_replies=None)
-		# # self.handle_message(izzyid, 'My name is Izzy', expected_replies=None)
 		self.handle_message(nateid, 'Play against Jess', expected_replies=None)
 		self.handle_message(jessid, 'Play against Nate', expected_replies=None)
 		clear_mocks()
@@ -336,11 +301,6 @@ class TestGameInitiation(BaseTest):
 
 class GamePlayTest(BaseTest):
 	def setUp(self):
-		# clear_mocks()
-		# self.db.delete_all()
-		# # self.handle_message(nateid, 'My name is Nate', expected_replies=None)
-		# # self.handle_message(jessid, 'My name is Jess', expected_replies=None)
-		# # self.handle_message(chadid, 'My name is Chad', expected_replies=None)
 		self.register_player('Nate')
 		self.register_player('Jess')
 		self.register_player('Chad')
@@ -369,7 +329,6 @@ def board_from_str(board, extras):
 		rows.append(row)
 	fen = '/'.join(rows) + extras
 	return dbactions.ChessBoard(fen)
-	# return chess.Board(fen)
 
 problemboard = None
 
@@ -443,11 +402,8 @@ class TestGamePlay(GamePlayTest):
 			self.handle_message(nateid, 'cd5', expected_replies=3)
 			self.assertLastGameRepEquals(nateid, 'rnbqkbnr-ppp1p1pp-8-3P1p2-4P3-8-PP1P1PPP-RNBQKBNR')
 
-
 	def test_ambiguous_moveII(self):
 		self.perform_moves(nateid, jessid, [('Nf3', 'h6'), ('Na3', 'g6'), ('Nc4', 'a6')], False)
-		# global problemboard
-		# problemboard = self.db.get_context(nateid)
 		with self.subTest('cannot make ambiguous move'):
 			self.handle_message(nateid, 'Ne5', expected_replies=1)
 			self.assertLastMessageEquals(nateid, 'That move could refer to two or more pieces')
@@ -455,11 +411,6 @@ class TestGamePlay(GamePlayTest):
 		with self.subTest('can qualify ambiguous move'):
 			self.handle_message(nateid, 'Nfe5', expected_replies=3)
 			self.assertLastGameRepEquals(nateid, 'rnbqkbnr-1ppppp2-p5pp-4N3-2N5-8-PPPPPPPP-R1BQKB1R')
-	# @unittest.skip
-	# def test_can_qualify_ambiguous_move(self):
-	# 	self.perform_moves(nateid, jessid, [('e4', 'f5'), ('c4', 'd5')])
-	# 	self.handle_message(nateid, 'cd5', expected_replies=1)
-
 
 	@unittest.skip
 	def test_can_qualify_unambiguous_move(self):
@@ -597,14 +548,16 @@ class TestUndo(GamePlayTest):
 	def test_cannot_undo_without_active_game(self):
 		with self.subTest('Unregistered'):
 			self.handle_message(izzyid, 'undo', expected_replies=1)
-			self.assertLastMessageEquals(izzyid, intro)
+			self.assertLastMessageEquals(izzyid, constants.intro)
 
 		with self.subTest('Registered...?'):
-			# self.handle_message(nateid, 'Play against Chad', expected_replies=None)
-			# raise Exception(self.db.user_is_registered(nateid))
-			# raise Exception(self.db.get_context(nateid))
 			self.handle_message(chadid, 'undo', expected_replies=1)
 			self.assertLastMessageEquals(chadid, 'You have no active games')
+
+	def test_cannot_undo_without_active_gameII(self):
+		self.handle_message(nateid, 'resign', expected_replies=None)
+		self.handle_message(nateid, 'undo', expected_replies=1)
+		self.assertLastMessageEquals(nateid, 'You have no active games with Jess')
 
 	def test_redundant_undo_request(self):
 		self.handle_message(nateid, 'e4', expected_replies=None)
@@ -613,15 +566,6 @@ class TestUndo(GamePlayTest):
 		self.handle_message(nateid, 'undo', expected_replies=1)
 		self.assertLastMessageEquals(nateid, 'You have already requested an undo')
 
-	def test_cannot_undo_without_active_gameII(self):
-		# Fastest way to kill the game
-		# exit()
-		self.handle_message(nateid, 'resign', expected_replies=None)
-		self.handle_message(nateid, 'undo', expected_replies=1)
-		self.assertLastMessageEquals(nateid, 'You have no active games with Jess')
-		# self.handle_message(izzyid, 'Play against Chad', expected_replies=None)
-		# self.handle_message(izzyid, 'undo', expected_replies=1)
-		# self.assertLastMessageEquals(izzyid, 'You have no active games with Chad')
 
 
 class TestGameFinish(GamePlayTest):
@@ -677,7 +621,7 @@ class TestMiscellaneous(GamePlayTest):
 	def test_show(self):
 		with self.subTest('Unregistered'):
 			self.handle_message(izzyid, 'show', expected_replies=1)
-			self.assertLastMessageEquals(izzyid, intro)
+			self.assertLastMessageEquals(izzyid, constants.intro)
 
 		with self.subTest('Without game'):
 			self.handle_message(chadid, 'show', expected_replies=1)
@@ -720,7 +664,6 @@ class TestMiscellaneous(GamePlayTest):
 		pass
 		# self.handle_message(nateid, 'status', expected_replies=1)
 
-# @unittest.skip
 class TestPlayerInteractions(BaseTest):
 	def init_blocks(self):
 		self.handle_message(nateid, 'Play against Jess')
@@ -803,24 +746,17 @@ class TestPlayerInteractions(BaseTest):
 			self.handle_message(jessid, 'Play against Nate', expected_replies=1)
 			self.assertLastMessageEquals(jessid, 'You are now playing against Nate')
 
-		# self.handle_message(jessid, 'New game white', expected_replies=1)
-		# self.assertLastMessageEquals(jessid, 'You have been blocked by Nate')
-
-
-
 	def test_can_block_before_game_starts(self):
 		pass
 
 	def test_can_block_during_game(self):
 		pass
 
-	# @unittest.expectedFailure
 	def test_can_unblock(self):
 		self.handle_message(nateid, 'Block jess', expected_replies=1)
 
 		self.handle_message(nateid, 'Unblock jess', expected_replies=1)
 		self.assertLastMessageEquals(nateid, 'You have unblocked Jess')
-		# self.assertLastMessageEquals(jessid, 'You have been unblocked by Nate')
 
 class TestActivation(BaseTest):
 	def setUp(self):
@@ -850,14 +786,13 @@ class TestActivation(BaseTest):
 	def test_deactivated_player_can_get_old_games(self):
 		pass
 
-	# No need
-	@unittest.skip
+	@unittest.expectedFailure
 	def test_redundant_deactivation(self):
 		self.handle_message(nateid, 'deactivate', expected_replies=1)
 		self.handle_message(nateid, 'deactivate', expected_replies=1)
 		self.assertLastMessageEquals(nateid, 'You are already deactivated')
 
-	@unittest.skip
+	@unittest.expectedFailure
 	def test_redundant_activation(self):
 		# self.handle_message(nateid, 'activate', expected_replies=None)
 		self.handle_message(nateid, 'activate', expected_replies=1)
@@ -877,17 +812,8 @@ class TestChallengeAcceptance(BaseTest):
 	def test_can_challenge_with_color(self):
 		self.handle_message(nateid, 'Play against jess white', expected_replies=3)
 
-# class TestBlocking(BaseTest):
-# 	def setUp(self):
-# 		self.register_all()
-
-
-	# def test_can_
-
-
 if __name__ == '__main__':
 	unittest.main()
-	# pass
 
 if False:
 	self = BaseTest()

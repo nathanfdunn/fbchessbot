@@ -44,3 +44,5 @@ deactivation_message = (
 activation_message = (
 	'You have been reactivated. Welcome back!'
 	)
+
+intro = "Hi! Why don't you introduce yourself? (say My name is <name>)"
