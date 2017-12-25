@@ -45,6 +45,24 @@ def board_image(fen):
 	board_image.save(board_image_name)
 	return send_file(board_image_name)
 
+@app.route('/board/<fen>', methods=['GET'])
+def board_imageII(fen):
+	# perspective = BLACK if request.args.get('perspective') == 'b' else WHITE
+	perspective_iswhite = request.args.get('perspective') != 'b'
+	print(fen, perspective)
+	fen = fen.split('?')[0] # don't know if it includes the query characters...
+	board_image_name = f'/tmp/{fen}_{perspective}.png'
+
+	fen = fen.replace('-', '/')  + ' w - - 0 1'
+
+	board_image = drawing.board_image(fen, perspective_iswhite)
+
+	# board = chess.Board(fen)
+	
+	# board_image = create_board_image(board_string_array)
+	board_image.save(board_image_name)
+	return send_file(board_image_name)
+
 
 @app.route('/pgn/<game_id>', methods=['GET'])
 def board_pgn(game_id):
@@ -594,6 +612,7 @@ def create_board_image(board):
 					board_image.paste(piece_image, (64*j, 64*i), piece_image)
 
 		return board_image
+
 
 if __name__ == '__main__':
 	app.run(host='0.0.0.0')
