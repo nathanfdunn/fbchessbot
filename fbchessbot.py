@@ -524,7 +524,7 @@ def send_pgn(recipient, gameid):
 # 	if r.status_code != requests.codes.ok:
 # 		print('Error I think:', r.text)
 
-def send_game_rep(recipient, game, perspective=True):
+def send_game_rep(recipient, game, perspective=WHITE):
 	message = game.image_url(perspective)
 	db.log_message(message, MessageType.CHESSBOT_IMAGE, recipientid=recipient)
 	r = requests.post('https://graph.facebook.com/v2.9/me/messages',
@@ -570,30 +570,30 @@ def send_message(recipient, text):
 
 
 def create_board_image(board):
-	board_image = Image.open('board.png').copy()
+	# board_image = Image.open('board.png').copy()
+	with Image.open('board.png').copy() as board_image:
+		piece_image_map = {
+			'r': 'sprites/blackrook.png',
+			'n': 'sprites/blackknight.png',
+			'b': 'sprites/blackbishop.png',
+			'q': 'sprites/blackqueen.png',
+			'k': 'sprites/blackking.png',
+			'p': 'sprites/blackpawn.png',
 
-	piece_image_map = {
-		'r': 'sprites/blackrook.png',
-		'n': 'sprites/blackknight.png',
-		'b': 'sprites/blackbishop.png',
-		'q': 'sprites/blackqueen.png',
-		'k': 'sprites/blackking.png',
-		'p': 'sprites/blackpawn.png',
+			'R': 'sprites/whiterook.png',
+			'N': 'sprites/whiteknight.png',
+			'B': 'sprites/whitebishop.png',
+			'Q': 'sprites/whitequeen.png',
+			'K': 'sprites/whiteking.png',
+			'P': 'sprites/whitepawn.png'
+		}
+		for i, row in enumerate(board):
+			for j, piece in enumerate(row):
+				if piece in piece_image_map:
+					piece_image = Image.open(piece_image_map[piece])
+					board_image.paste(piece_image, (64*j, 64*i), piece_image)
 
-		'R': 'sprites/whiterook.png',
-		'N': 'sprites/whiteknight.png',
-		'B': 'sprites/whitebishop.png',
-		'Q': 'sprites/whitequeen.png',
-		'K': 'sprites/whiteking.png',
-		'P': 'sprites/whitepawn.png'
-	}
-	for i, row in enumerate(board):
-		for j, piece in enumerate(row):
-			if piece in piece_image_map:
-				piece_image = Image.open(piece_image_map[piece])
-				board_image.paste(piece_image, (64*j, 64*i), piece_image)
-
-	return board_image
+		return board_image
 
 if __name__ == '__main__':
 	app.run(host='0.0.0.0')
