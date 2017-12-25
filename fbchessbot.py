@@ -55,12 +55,12 @@ def board_imageII(fen):
 
 	fen = fen.replace('-', '/')  + ' w - - 0 1'
 
-	board_image = drawing.board_image(fen, perspective_iswhite)
+	drawing.create_board_image(fen, perspective_iswhite, board_image_name)
 
 	# board = chess.Board(fen)
 	
 	# board_image = create_board_image(board_string_array)
-	board_image.save(board_image_name)
+	# board_image.save(board_image_name)
 	return send_file(board_image_name)
 
 
@@ -588,30 +588,30 @@ def send_message(recipient, text):
 
 
 def create_board_image(board):
-	# board_image = Image.open('board.png').copy()
-	with Image.open('board.png').copy() as board_image:
-		piece_image_map = {
-			'r': 'sprites/blackrook.png',
-			'n': 'sprites/blackknight.png',
-			'b': 'sprites/blackbishop.png',
-			'q': 'sprites/blackqueen.png',
-			'k': 'sprites/blackking.png',
-			'p': 'sprites/blackpawn.png',
+	board_image = Image.open('board.png').copy()
+	# with Image.open('board.png').copy() as board_image:
+	piece_image_map = {
+		'r': 'sprites/blackrook.png',
+		'n': 'sprites/blackknight.png',
+		'b': 'sprites/blackbishop.png',
+		'q': 'sprites/blackqueen.png',
+		'k': 'sprites/blackking.png',
+		'p': 'sprites/blackpawn.png',
 
-			'R': 'sprites/whiterook.png',
-			'N': 'sprites/whiteknight.png',
-			'B': 'sprites/whitebishop.png',
-			'Q': 'sprites/whitequeen.png',
-			'K': 'sprites/whiteking.png',
-			'P': 'sprites/whitepawn.png'
-		}
-		for i, row in enumerate(board):
-			for j, piece in enumerate(row):
-				if piece in piece_image_map:
-					piece_image = Image.open(piece_image_map[piece])
-					board_image.paste(piece_image, (64*j, 64*i), piece_image)
+		'R': 'sprites/whiterook.png',
+		'N': 'sprites/whiteknight.png',
+		'B': 'sprites/whitebishop.png',
+		'Q': 'sprites/whitequeen.png',
+		'K': 'sprites/whiteking.png',
+		'P': 'sprites/whitepawn.png'
+	}
+	for i, row in enumerate(board):
+		for j, piece in enumerate(row):
+			if piece in piece_image_map:
+				piece_image = Image.open(piece_image_map[piece])
+				board_image.paste(piece_image, (64*j, 64*i), piece_image)
 
-		return board_image
+	return board_image
 
 
 if __name__ == '__main__':

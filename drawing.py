@@ -2,7 +2,7 @@ from PIL import Image#, ImageDraw
 
 BORDER = 30
 
-def board_image(fen, iswhite):
+def create_board_image(fen, iswhite, board_image_name):
 	board = dbactions.ChessBoard(fen)
 	board_string_array = str(board).replace(' ', '').split('\n')
 
@@ -35,4 +35,5 @@ def board_image(fen, iswhite):
 					piece_image = Image.open(piece_image_map[piece])
 					board_image.paste(piece_image, (BORDER + 64*j,BORDER + 64*i), piece_image)
 
-		return board_image
+		# return board_image
+		board_image.save(board_image_name)
