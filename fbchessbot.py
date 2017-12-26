@@ -49,9 +49,9 @@ def board_image(fen):
 def board_imageII(fen):
 	# perspective = BLACK if request.args.get('perspective') == 'b' else WHITE
 	perspective_iswhite = request.args.get('perspective') != 'b'
-	print(fen, perspective)
+	print(fen, perspective_iswhite)
 	fen = fen.split('?')[0] # don't know if it includes the query characters...
-	board_image_name = f'/tmp/{fen}_{perspective}.png'
+	board_image_name = f'/tmp/{fen}_{perspective_iswhite}.png'
 
 	fen = fen.replace('-', '/')  + ' w - - 0 1'
 
