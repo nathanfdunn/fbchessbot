@@ -117,7 +117,7 @@ def messages():
 	try:
 		for sender, message in messaging_events(request.get_data()):
 			sender, message = int(sender), message.strip()
-			db.message_log(message, MessageType.PLAYER_MESSAGE, senderid=sender)
+			db.log_message(message, MessageType.PLAYER_MESSAGE, senderid=sender)
 			handle_message(sender, message)
 	except Exception as e:
 		print('Error handling messages:', repr(e))
