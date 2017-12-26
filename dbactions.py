@@ -85,6 +85,13 @@ class Game:
 		return self.board.to_byte_string()
 
 	def image_url(self, perspective=True):
+		fen = self.board.fen().split()[0].replace('/','-')
+		query_arg = 'w' if perspective else 'b'
+
+		return (f'https://fbchessbot.herokuapp.com/board/{fen}'
+				f'?perspective={query_arg}')
+
+
 		BLACK = False
 		fen = self.board.fen().split()[0]
 

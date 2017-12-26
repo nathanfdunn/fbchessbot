@@ -21,10 +21,10 @@ def mock_send_message(recipient, text):
 	recipient = recipient
 	sent_messages[recipient].append(text)
 
-sent_game_reps = defaultdict(list)
+sent_game_urls = defaultdict(list)
 def mock_send_game_rep(recipient, game, perspective=True):
 	recipient = recipient
-	sent_game_reps[recipient].append(game.image_url(perspective))
+	sent_game_urls[recipient].append(game.image_url(perspective))
 
 sent_pgns = defaultdict(list)
 def mock_send_pgn(recipient, game):
@@ -32,9 +32,9 @@ def mock_send_pgn(recipient, game):
 	sent_pgns[recipient].append(game.pgn_url())
 
 def clear_mocks():
-	global sent_messages, sent_game_reps, sent_pgns
+	global sent_messages, sent_game_urls, sent_pgns
 	sent_messages = defaultdict(list)
-	sent_game_reps = defaultdict(list)
+	sent_game_urls = defaultdict(list)
 	sent_pgns = defaultdict(list)
 
 fbchessbot.send_message = mock_send_message
@@ -58,15 +58,64 @@ class BaseTest(unittest.TestCase):
 		# This only works because we're multiply inheriting from unittest.TestCase as well
 		self.assertEqual(last_message, text)
 
-	def assertLastGameRepEquals(self, recipient, rep_url, *, target_index=-1):
+	def assertLastBoardImageEquals_deprecated(self, recipient, rep_url, *, target_index=-1):
 		# recipient = str(recipient)
 		rep_url = 'https://fbchessbot.herokuapp.com/image/' + rep_url
-		reps = sent_game_reps[recipient]
+		# perspective_arg = 'w' if perspective else 'b'
+		# rep_url = f'https://fbchessbot.herokuapp.com/board/{rep_url}?perspective={perspective_arg}'
+		reps = sent_game_urls[recipient]
 		if not reps:
-			raise AssertionError(f'No game reps for {recipient}. Some for {[recipient for recipient in sent_game_reps if sent_game_reps[recipient]]}')
+			raise AssertionError(
+				f'No game reps for {recipient}. Some for {[recipient for recipient in sent_game_urls if sent_game_urls[recipient]]}')
 		last_rep = reps[target_index]
 		# This only works because we're multiply inheriting from unittest.TestCase as well
 		self.assertEqual(last_rep, rep_url)
+
+	def assertLastBoardImageEquals(self, recipient, rep_url, *, target_index=-1):
+		self.assertLastBoardImageEqualsI(rep_url, 'w', recipient)
+		return
+		# recipient = str(recipient)
+		rep_url = 'https://fbchessbot.herokuapp.com/image/' + rep_url
+		# perspective_arg = 'w' if perspective else 'b'
+		# rep_url = f'https://fbchessbot.herokuapp.com/board/{rep_url}?perspective={perspective_arg}'
+		reps = sent_game_urls[recipient]
+		if not reps:
+			raise AssertionError(
+				f'No game reps for {recipient}. Some for {[recipient for recipient in sent_game_urls if sent_game_urls[recipient]]}')
+		last_rep = reps[target_index]
+		# This only works because we're multiply inheriting from unittest.TestCase as well
+		self.assertEqual(last_rep, rep_url)
+
+	# 'wb' annotation
+	def assertLastBoardImageEqualsI(self, fen, perspective : 'wb', recipient, *, target_index=-1):
+		image_url = f'https://fbchessbot.herokuapp.com/board/{fen}?perspective={perspective}'
+		if not sent_game_urls[recipient]:
+			raise AssertionError(
+				f'No game reps for {recipient}. Some for {[recipient for recipient in sent_game_urls if sent_game_urls[recipient]]}')
+		self.assertEqual(sent_game_urls[recipient][target_index], image_url)
+
+	def assertLastBoardImageEqualsII(self, fen, whiteplayerid, blackplayerid, *, target_index=-1):
+		# image_url = f'https://fbchessbot.herokuapp.com/board/{fen}?perspective='
+		if not sent_game_urls[whiteplayerid] or not sent_game_urls[blackplayerid]:
+			raise AssertionError(
+				f'No game reps for {whiteplayerid} or {blackplayerid}. Some for {[recipient for recipient in sent_game_urls if sent_game_urls[recipient]]}')
+
+		self.assertLastBoardImageEqualsI(fen, 'w', whiteplayerid)
+		self.assertLastBoardImageEqualsI(fen, 'b', blackplayerid)
+
+		# last_white_url = sent_game_urls[whiteplayerid][target_index]
+		# self.assertEqual(last_white_url, image_url + 'w')
+
+		# last_black_url = sent_game_urls[blackplayerid][target_index]
+		# self.assertEqual(last_black_url, image_url + 'b')
+
+		# reps = sent_game_urls[recipient]
+		# if not reps:
+		# 	raise AssertionError(
+		# 		f'No game reps for {recipient}. Some for {[recipient for recipient in sent_game_urls if sent_game_urls[recipient]]}')
+		# last_rep = reps[target_index]
+		# # This only works because we're multiply inheriting from unittest.TestCase as well
+		# self.assertEqual(last_rep, rep_url)
 
 	def register_player(self, player_name, playerid=None):
 		if playerid is None:
@@ -102,15 +151,15 @@ class BaseTest(unittest.TestCase):
 	def handle_message(self, recipient, message, *, expected_replies=None):
 		'''Utility method for player input. Accounts for possibility of unexpected replies'''
 		num_replies_start = (sum(len(messages) for messages in sent_messages.values()) +
-								sum(len(games) for games in sent_game_reps.values()) +
-								sum(len(pgns) for pgns in sent_pgns.values())
-								)
+							 sum(len(games) for games in sent_game_urls.values()) +
+							 sum(len(pgns) for pgns in sent_pgns.values())
+							 )
 
 		fbchessbot.handle_message(recipient, message)
 		num_replies_finish = (sum(len(messages) for messages in sent_messages.values()) +
-								sum(len(games) for games in sent_game_reps.values()) +
-								sum(len(pgns) for pgns in sent_pgns.values())
-								)
+							  sum(len(games) for games in sent_game_urls.values()) +
+							  sum(len(pgns) for pgns in sent_pgns.values())
+							  )
 		actual_replies = num_replies_finish - num_replies_start
 		
 		if expected_replies is not None and actual_replies != expected_replies:
@@ -233,7 +282,7 @@ class TestOpponentContext(BaseTest):
 
 	def test_unregistered_cannot_set_opponent_context(self):
 		self.handle_message(839293, 'Play against Nate')
-		self.assertLastMessageEquals(839293, intro)
+		self.assertLastMessageEquals(839293, constants.intro)
 
 	def test_opponent_context_automatically_set_on_newbie(self):
 		self.handle_message(nateid, 'Play against Chad', expected_replies=2)
@@ -281,16 +330,19 @@ class TestGameInitiation(BaseTest):
 
 	def test_can_start_new_game_as_white(self):
 		self.handle_message(nateid, 'New game white', expected_replies=3)
-		self.assertLastGameRepEquals(nateid, 'rnbqkbnr-pppppppp-8-8-8-8-PPPPPPPP-RNBQKBNR')
-		self.assertLastMessageEquals(jessid, 'Nate started a new game')
-		self.assertLastGameRepEquals(jessid, 'RNBKQBNR-PPPPPPPP-8-8-8-8-pppppppp-rnbkqbnr')
+		self.assertLastBoardImageEqualsII('rnbqkbnr-pppppppp-8-8-8-8-PPPPPPPP-RNBQKBNR', nateid, jessid)
+
+		# self.assertLastBoardImageEquals(nateid, 'rnbqkbnr-pppppppp-8-8-8-8-PPPPPPPP-RNBQKBNR')
+		# self.assertLastMessageEquals(jessid, 'Nate started a new game')
+		# self.assertLastBoardImageEquals(jessid, 'RNBKQBNR-PPPPPPPP-8-8-8-8-pppppppp-rnbkqbnr')
 
 	def test_can_start_new_game_as_black(self):
 		self.handle_message(nateid, 'New game black', expected_replies=3)
 		# Note the order of the target_index's of these two. show_to_both sends to white first. Huh.
-		self.assertLastGameRepEquals(nateid, 'RNBKQBNR-PPPPPPPP-8-8-8-8-pppppppp-rnbkqbnr')
+		# self.assertLastBoardImageEquals(nateid, 'RNBKQBNR-PPPPPPPP-8-8-8-8-pppppppp-rnbkqbnr')
 		self.assertLastMessageEquals(jessid, 'Nate started a new game')
-		self.assertLastGameRepEquals(jessid, 'rnbqkbnr-pppppppp-8-8-8-8-PPPPPPPP-RNBQKBNR')
+		# self.assertLastBoardImageEquals(jessid, 'rnbqkbnr-pppppppp-8-8-8-8-PPPPPPPP-RNBQKBNR')
+		self.assertLastBoardImageEqualsII('rnbqkbnr-pppppppp-8-8-8-8-PPPPPPPP-RNBQKBNR', jessid, nateid)
 
 	def test_cannot_start_new_in_middle_of_game(self):
 		self.handle_message(nateid, 'New game white', expected_replies=None)
@@ -336,36 +388,42 @@ class TestGamePlay(GamePlayTest):
 	def test_basic_moves(self):
 		self.handle_message(nateid, 'e4', expected_replies=3)
 		self.assertLastMessageEquals(jessid, 'Nate played e4')
-		self.assertLastGameRepEquals(nateid, 'rnbqkbnr-pppppppp-8-8-4P3-8-PPPP1PPP-RNBQKBNR')
-		self.assertLastGameRepEquals(jessid, 'RNBKQBNR-PPP1PPPP-8-3P4-8-8-pppppppp-rnbkqbnr')
+		self.assertLastBoardImageEqualsII('rnbqkbnr-pppppppp-8-8-4P3-8-PPPP1PPP-RNBQKBNR', nateid, jessid)
+		# self.assertLastBoardImageEquals(nateid, 'rnbqkbnr-pppppppp-8-8-4P3-8-PPPP1PPP-RNBQKBNR')
+		# self.assertLastBoardImageEquals(jessid, 'RNBKQBNR-PPP1PPPP-8-3P4-8-8-pppppppp-rnbkqbnr')
 
 		self.handle_message(jessid, 'e5', expected_replies=3)
 		self.assertLastMessageEquals(nateid, 'Jess played e5')
 		# Now note the target_index's - handle_move doesn't use show_to_both
-		self.assertLastGameRepEquals(nateid, 'rnbqkbnr-pppp1ppp-8-4p3-4P3-8-PPPP1PPP-RNBQKBNR')
-		self.assertLastGameRepEquals(jessid, 'RNBKQBNR-PPP1PPPP-8-3P4-3p4-8-ppp1pppp-rnbkqbnr')
+		self.assertLastBoardImageEqualsII('rnbqkbnr-pppp1ppp-8-4p3-4P3-8-PPPP1PPP-RNBQKBNR', nateid, jessid)
+		# self.assertLastBoardImageEquals(nateid, 'rnbqkbnr-pppp1ppp-8-4p3-4P3-8-PPPP1PPP-RNBQKBNR')
+		# self.assertLastBoardImageEquals(jessid, 'RNBKQBNR-PPP1PPPP-8-3P4-3p4-8-ppp1pppp-rnbkqbnr')
 
 		self.handle_message(nateid, 'Nf3', expected_replies=3)
 		self.assertLastMessageEquals(jessid, 'Nate played Nf3')
-		self.assertLastGameRepEquals(nateid, 'rnbqkbnr-pppp1ppp-8-4p3-4P3-5N2-PPPP1PPP-RNBQKB1R')
-		self.assertLastGameRepEquals(jessid, 'R1BKQBNR-PPP1PPPP-2N5-3P4-3p4-8-ppp1pppp-rnbkqbnr')
+		self.assertLastBoardImageEqualsII('rnbqkbnr-pppp1ppp-8-4p3-4P3-5N2-PPPP1PPP-RNBQKB1R', nateid, jessid)
+		# self.assertLastBoardImageEquals(nateid, 'rnbqkbnr-pppp1ppp-8-4p3-4P3-5N2-PPPP1PPP-RNBQKB1R')
+		# self.assertLastBoardImageEquals(jessid, 'R1BKQBNR-PPP1PPPP-2N5-3P4-3p4-8-ppp1pppp-rnbkqbnr')
 
 	def test_case_sensitivity(self):
 		self.handle_message(nateid, 'E4', expected_replies=3)
 		self.assertLastMessageEquals(jessid, 'Nate played e4')
-		self.assertLastGameRepEquals(nateid, 'rnbqkbnr-pppppppp-8-8-4P3-8-PPPP1PPP-RNBQKBNR')
-		self.assertLastGameRepEquals(jessid, 'RNBKQBNR-PPP1PPPP-8-3P4-8-8-pppppppp-rnbkqbnr')
+		self.assertLastBoardImageEqualsII('rnbqkbnr-pppppppp-8-8-4P3-8-PPPP1PPP-RNBQKBNR', nateid, jessid)
+		# self.assertLastBoardImageEquals(nateid, 'rnbqkbnr-pppppppp-8-8-4P3-8-PPPP1PPP-RNBQKBNR')
+		# self.assertLastBoardImageEquals(jessid, 'RNBKQBNR-PPP1PPPP-8-3P4-8-8-pppppppp-rnbkqbnr')
 
 		self.handle_message(jessid, 'E5', expected_replies=3)
 		self.assertLastMessageEquals(nateid, 'Jess played e5')
 		# Now note the target_index's - handle_move doesn't use show_to_both
-		self.assertLastGameRepEquals(nateid, 'rnbqkbnr-pppp1ppp-8-4p3-4P3-8-PPPP1PPP-RNBQKBNR')
-		self.assertLastGameRepEquals(jessid, 'RNBKQBNR-PPP1PPPP-8-3P4-3p4-8-ppp1pppp-rnbkqbnr')
+		self.assertLastBoardImageEqualsII('rnbqkbnr-pppp1ppp-8-4p3-4P3-8-PPPP1PPP-RNBQKBNR', nateid, jessid)
+		# self.assertLastBoardImageEquals(nateid, 'rnbqkbnr-pppp1ppp-8-4p3-4P3-8-PPPP1PPP-RNBQKBNR')
+		# self.assertLastBoardImageEquals(jessid, 'RNBKQBNR-PPP1PPPP-8-3P4-3p4-8-ppp1pppp-rnbkqbnr')
 
 		self.handle_message(nateid, 'nf3', expected_replies=3)
 		self.assertLastMessageEquals(jessid, 'Nate played Nf3')
-		self.assertLastGameRepEquals(nateid, 'rnbqkbnr-pppp1ppp-8-4p3-4P3-5N2-PPPP1PPP-RNBQKB1R')
-		self.assertLastGameRepEquals(jessid, 'R1BKQBNR-PPP1PPPP-2N5-3P4-3p4-8-ppp1pppp-rnbkqbnr')
+		self.assertLastBoardImageEqualsII('rnbqkbnr-pppp1ppp-8-4p3-4P3-5N2-PPPP1PPP-RNBQKB1R', nateid, jessid)
+		# self.assertLastBoardImageEquals(nateid, 'rnbqkbnr-pppp1ppp-8-4p3-4P3-5N2-PPPP1PPP-RNBQKB1R')
+		# self.assertLastBoardImageEquals(jessid, 'R1BKQBNR-PPP1PPPP-2N5-3P4-3p4-8-ppp1pppp-rnbkqbnr')
 
 
 
@@ -400,7 +458,8 @@ class TestGamePlay(GamePlayTest):
 		with self.subTest('can qualify file'):
 			self.perform_moves(nateid, jessid, [('e4', 'f5'), ('c4', 'd5')])
 			self.handle_message(nateid, 'cd5', expected_replies=3)
-			self.assertLastGameRepEquals(nateid, 'rnbqkbnr-ppp1p1pp-8-3P1p2-4P3-8-PP1P1PPP-RNBQKBNR')
+			self.assertLastBoardImageEqualsI('rnbqkbnr-ppp1p1pp-8-3P1p2-4P3-8-PP1P1PPP-RNBQKBNR', 'w', nateid)
+			# self.assertLastBoardImageEquals(nateid, 'rnbqkbnr-ppp1p1pp-8-3P1p2-4P3-8-PP1P1PPP-RNBQKBNR')
 
 	def test_ambiguous_moveII(self):
 		self.perform_moves(nateid, jessid, [('Nf3', 'h6'), ('Na3', 'g6'), ('Nc4', 'a6')], False)
@@ -410,7 +469,8 @@ class TestGamePlay(GamePlayTest):
 
 		with self.subTest('can qualify ambiguous move'):
 			self.handle_message(nateid, 'Nfe5', expected_replies=3)
-			self.assertLastGameRepEquals(nateid, 'rnbqkbnr-1ppppp2-p5pp-4N3-2N5-8-PPPPPPPP-R1BQKB1R')
+			self.assertLastBoardImageEqualsI('rnbqkbnr-1ppppp2-p5pp-4N3-2N5-8-PPPPPPPP-R1BQKB1R', 'w', nateid)
+			# self.assertLastBoardImageEquals(nateid, 'rnbqkbnr-1ppppp2-p5pp-4N3-2N5-8-PPPPPPPP-R1BQKB1R')
 
 	@unittest.skip
 	def test_can_qualify_unambiguous_move(self):
@@ -432,11 +492,13 @@ class TestGamePlay(GamePlayTest):
 
 	def test_can_make_case_insensitive_pawn_move(self):
 		self.handle_message(nateid, 'E4', expected_replies=3)
-		self.assertLastGameRepEquals(nateid, 'rnbqkbnr-pppppppp-8-8-4P3-8-PPPP1PPP-RNBQKBNR')
+		self.assertLastBoardImageEqualsI('rnbqkbnr-pppppppp-8-8-4P3-8-PPPP1PPP-RNBQKBNR', 'w', nateid)
+		# self.assertLastBoardImageEquals(nateid, 'rnbqkbnr-pppppppp-8-8-4P3-8-PPPP1PPP-RNBQKBNR')
 
 	def test_can_qualify_pawn_move_piece(self):
 		self.handle_message(nateid, 'Pe4', expected_replies=3)
-		self.assertLastGameRepEquals(nateid, 'rnbqkbnr-pppppppp-8-8-4P3-8-PPPP1PPP-RNBQKBNR')
+		self.assertLastBoardImageEqualsI('rnbqkbnr-pppppppp-8-8-4P3-8-PPPP1PPP-RNBQKBNR', 'w', nateid)
+		# self.assertLastBoardImageEquals(nateid, 'rnbqkbnr-pppppppp-8-8-4P3-8-PPPP1PPP-RNBQKBNR')
 
 	def test_can_promote(self):
 		board = '''
@@ -452,22 +514,22 @@ class TestGamePlay(GamePlayTest):
 		with self.subTest('Verbose'):
 			self.set_position(board)
 			self.handle_message(nateid, 'e8=Q', expected_replies=3)
-			self.assertLastGameRepEquals(nateid, '4Q3-1k6-8-8-8-8-8-1K6')
+			self.assertLastBoardImageEquals(nateid, '4Q3-1k6-8-8-8-8-8-1K6')
 
 		with self.subTest('Verbose (lower)'):
 			self.set_position(board)
 			self.handle_message(nateid, 'e8=q', expected_replies=3)
-			self.assertLastGameRepEquals(nateid, '4Q3-1k6-8-8-8-8-8-1K6')
+			self.assertLastBoardImageEquals(nateid, '4Q3-1k6-8-8-8-8-8-1K6')
 
 		with self.subTest('Minimal'):
 			self.set_position(board)
 			self.handle_message(nateid, 'e8Q', expected_replies=3)
-			self.assertLastGameRepEquals(nateid, '4Q3-1k6-8-8-8-8-8-1K6')
+			self.assertLastBoardImageEquals(nateid, '4Q3-1k6-8-8-8-8-8-1K6')
 
 		with self.subTest('Minimal (lower)'):
 			self.set_position(board)
 			self.handle_message(nateid, 'e8q', expected_replies=3)
-			self.assertLastGameRepEquals(nateid, '4Q3-1k6-8-8-8-8-8-1K6')
+			self.assertLastBoardImageEquals(nateid, '4Q3-1k6-8-8-8-8-8-1K6')
 
 	def test_can_castle(self):
 		board = '''
@@ -483,12 +545,12 @@ class TestGamePlay(GamePlayTest):
 		with self.subTest('Long - Ohs'):
 			self.set_position(board)
 			self.handle_message(nateid, 'O-O-O', expected_replies=3)
-			self.assertLastGameRepEquals(nateid, 'r3k2r-8-8-8-8-8-8-2KR3R')
+			self.assertLastBoardImageEquals(nateid, 'r3k2r-8-8-8-8-8-8-2KR3R')
 
 		with self.subTest('Long - 0s'):
 			self.set_position(board)
 			self.handle_message(nateid, '0-0-0', expected_replies=3)
-			self.assertLastGameRepEquals(nateid, 'r3k2r-8-8-8-8-8-8-2KR3R')
+			self.assertLastBoardImageEquals(nateid, 'r3k2r-8-8-8-8-8-8-2KR3R')
 
 	def test_check(self):
 		self.perform_moves(nateid, jessid, [('e4', 'f5')])
@@ -515,8 +577,8 @@ class TestUndo(GamePlayTest):
 		with self.subTest('can accept'):
 			self.handle_message(jessid, 'undo', expected_replies=3)
 			self.assertLastMessageEquals(nateid, 'Jess accepted your undo request')
-			self.assertLastGameRepEquals(nateid, 'rnbqkbnr-pppppppp-8-8-8-8-PPPPPPPP-RNBQKBNR')
-			self.assertLastGameRepEquals(jessid, 'RNBKQBNR-PPPPPPPP-8-8-8-8-pppppppp-rnbkqbnr')
+			self.assertLastBoardImageEquals(nateid, 'rnbqkbnr-pppppppp-8-8-8-8-PPPPPPPP-RNBQKBNR')
+			self.assertLastBoardImageEquals(jessid, 'RNBKQBNR-PPPPPPPP-8-8-8-8-pppppppp-rnbkqbnr')
 			with self.db.cursor() as cur:
 				cur.execute('SELECT undo FROM games')
 				self.assertEqual(cur.fetchone()[0], False)
@@ -629,12 +691,12 @@ class TestMiscellaneous(GamePlayTest):
 
 		with self.subTest('With game - White'):
 			self.handle_message(nateid, 'show', expected_replies=2)
-			self.assertLastGameRepEquals(nateid, 'rnbqkbnr-pppppppp-8-8-8-8-PPPPPPPP-RNBQKBNR')
+			self.assertLastBoardImageEquals(nateid, 'rnbqkbnr-pppppppp-8-8-8-8-PPPPPPPP-RNBQKBNR')
 			self.assertLastMessageEquals(nateid, 'White to move')
 
 		with self.subTest('With game - Black'):
 			self.handle_message(jessid, 'show', expected_replies=2)
-			self.assertLastGameRepEquals(jessid, 'RNBKQBNR-PPPPPPPP-8-8-8-8-pppppppp-rnbkqbnr')
+			self.assertLastBoardImageEquals(jessid, 'RNBKQBNR-PPPPPPPP-8-8-8-8-pppppppp-rnbkqbnr')
 			self.assertLastMessageEquals(jessid, 'White to move')
 
 	def test_help(self):

@@ -49,10 +49,14 @@ def board_image(fen):
 @app.route('/board/<fen>', methods=['GET'])
 def board_imageII(fen):
 	# perspective = BLACK if request.args.get('perspective') == 'b' else WHITE
-	perspective_iswhite = request.args.get('perspective') != 'b'
-	print(fen, perspective_iswhite)
+	perspective_arg = request.args.get('perspective') or 'w'
+	perspective_arg = perspective_arg[0].lower()
+
+	perspective_iswhite = (perspective_arg == 'w')
+
+	# print(fen, perspective_iswhite)
 	fen = fen.split('?')[0] # don't know if it includes the query characters...
-	board_image_name = f'/tmp/{fen}_{perspective_iswhite}.png'
+	board_image_name = f'/tmp/{fen}_{perspective_arg}.png'
 
 	fen = fen.replace('-', '/')  + ' w - - 0 1'
 
@@ -544,8 +548,8 @@ def send_pgn(recipient, gameid):
 # 		print('Error I think:', r.text)
 
 def send_game_rep(recipient, game, perspective=WHITE):
-	message = game.image_url(perspective)
-	db.log_message(message, MessageType.CHESSBOT_IMAGE, recipientid=recipient)
+	board_image_url = game.image_url(perspective)
+	db.log_message(board_image_url, MessageType.CHESSBOT_IMAGE, recipientid=recipient)
 	r = requests.post('https://graph.facebook.com/v2.9/me/messages',
 		params={'access_token': PAGE_ACCESS_TOKEN},
 		data=json.dumps({
@@ -554,7 +558,7 @@ def send_game_rep(recipient, game, perspective=WHITE):
 				'attachment': {
 					'type': 'image',
 					'payload': {
-						'url': game.image_url(perspective)
+						'url': board_image_url #game.image_url(perspective)
 					}
 				}
 			}
