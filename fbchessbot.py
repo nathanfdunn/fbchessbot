@@ -13,12 +13,12 @@ import requests
 import constants
 from constants import WHITE, BLACK, WHITE_WINS, BLACK_WINS, DRAW, MessageType
 import dbactions
+import drawing
 try:
 	import env
 except ModuleNotFoundError:
 	# Heroku has us covered
 	pass
-import drawing
 
 VERIFY_TOKEN = os.environ['VERIFY_TOKEN']
 PAGE_ACCESS_TOKEN = os.environ['PAGE_ACCESS_TOKEN']

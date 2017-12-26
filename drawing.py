@@ -1,9 +1,11 @@
 from PIL import Image#, ImageDraw
 
+from dbactions import ChessBoard
+
 BORDER = 30
 
 def create_board_image(fen, iswhite, board_image_name):
-	board = dbactions.ChessBoard(fen)
+	board = ChessBoard(fen)
 	board_string_array = str(board).replace(' ', '').split('\n')
 
 	if iswhite:
