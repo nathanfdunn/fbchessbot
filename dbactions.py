@@ -387,7 +387,7 @@ class DB:
 					message_typeid
 				)
 				VALUES (%s, %s, %s, %s)
-				''', [senderid, recipientid, message, message_typeid])
+				''', [senderid, recipientid, message, int(message_type)])
 			cur.connection.commit()
 
 	def deactivate_player(self, playerid):

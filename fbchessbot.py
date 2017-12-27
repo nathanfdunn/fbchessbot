@@ -3,10 +3,11 @@ import json
 import inspect
 import os
 import re
+import sys
 
 import chess
 import chess.pgn
-from flask import Flask, request, send_file
+from flask import Flask, request, send_file, escape as flask_encode_html
 from PIL import Image, ImageDraw
 import requests
 
@@ -617,6 +618,56 @@ def create_board_image(board):
 				board_image.paste(piece_image, (64*j, 64*i), piece_image)
 
 	return board_image
+
+
+if sys.flags.debug:
+	messages = []
+	def send_message(recipient, text):
+		messages.append(('cb-msg', text))
+		print(recipient, text)
+
+	def send_pgn(recipient, gameid):
+		messages.append(('cb-pgn', gameid))
+		print(recipient, gameid)
+
+	def send_game_rep(recipient, game, perspective=WHITE):
+		board_image_url = game.image_url(perspective)
+		messages.append(('cb-game', board_image_url))
+		print(recipient, board_image_url)
+
+	# TODO templates?
+	@app.route('/repl', methods=['GET', 'POST'])
+	def repl():
+		if request.method == 'POST':
+			sender = request.form.get('sender') or ''
+			message = request.form.get('message') or ''
+			print(f'repl: {sender}, {message}')
+			messages.append((sender, message))
+			handle_message(sender, message)
+
+		# if request.method == 'GET':
+		table = '<table>'
+		for sender, message in messages:
+			table += f'''
+				<tr>
+					<td>{sender}</td>
+					<td>{flask_encode_html(message)}</td>
+				</tr>'''
+		table += '</table>'
+
+		return f'''
+			{table}
+			<form action="/repl" method="post">
+				<input type="text" name="sender" value="12345">
+				<input type="text" name="message">
+				<input type="submit">
+			</form>
+			'''
+
+	handle_message(67890, 'My name is Jess')
+	del messages[0]
+	# @app.route('/mock_repl', methods=['POST'])
+	# def mock_repl():
 
 
 if __name__ == '__main__':
