@@ -664,8 +664,8 @@ if sys.flags.debug:
 			</form>
 			'''
 
-	handle_message(67890, 'My name is Jess')
-	del messages[0]
+	# handle_message(67890, 'My name is Jess')
+	# del messages[0]
 	# @app.route('/mock_repl', methods=['POST'])
 	# def mock_repl():
 

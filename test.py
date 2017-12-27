@@ -577,8 +577,9 @@ class TestUndo(GamePlayTest):
 		with self.subTest('can accept'):
 			self.handle_message(jessid, 'undo', expected_replies=3)
 			self.assertLastMessageEquals(nateid, 'Jess accepted your undo request')
-			self.assertLastBoardImageEquals(nateid, 'rnbqkbnr-pppppppp-8-8-8-8-PPPPPPPP-RNBQKBNR')
-			self.assertLastBoardImageEquals(jessid, 'RNBKQBNR-PPPPPPPP-8-8-8-8-pppppppp-rnbkqbnr')
+			self.assertLastBoardImageEqualsII('rnbqkbnr-pppppppp-8-8-8-8-PPPPPPPP-RNBQKBNR', nateid, jessid)
+			# self.assertLastBoardImageEquals(nateid, 'rnbqkbnr-pppppppp-8-8-8-8-PPPPPPPP-RNBQKBNR')
+			# self.assertLastBoardImageEquals(jessid, 'RNBKQBNR-PPPPPPPP-8-8-8-8-pppppppp-rnbkqbnr')
 			with self.db.cursor() as cur:
 				cur.execute('SELECT undo FROM games')
 				self.assertEqual(cur.fetchone()[0], False)
@@ -696,7 +697,8 @@ class TestMiscellaneous(GamePlayTest):
 
 		with self.subTest('With game - Black'):
 			self.handle_message(jessid, 'show', expected_replies=2)
-			self.assertLastBoardImageEquals(jessid, 'RNBKQBNR-PPPPPPPP-8-8-8-8-pppppppp-rnbkqbnr')
+			# self.assertLastBoardImageEquals(jessid, 'RNBKQBNR-PPPPPPPP-8-8-8-8-pppppppp-rnbkqbnr')
+			self.assertLastBoardImageEqualsI('rnbqkbnr-pppppppp-8-8-8-8-PPPPPPPP-RNBQKBNR', 'b', jessid)
 			self.assertLastMessageEquals(jessid, 'White to move')
 
 	def test_help(self):
@@ -726,7 +728,7 @@ class TestMiscellaneous(GamePlayTest):
 		pass
 		# self.handle_message(nateid, 'status', expected_replies=1)
 
-class TestPlayerInteractions(BaseTest):
+class TestBlocking(BaseTest):
 	def init_blocks(self):
 		self.handle_message(nateid, 'Play against Jess')
 		self.handle_message(jessid, 'Play against Nate')
@@ -766,8 +768,26 @@ class TestPlayerInteractions(BaseTest):
 			self.handle_message(jessid, 'Play against nate', expected_replies=1)
 			self.assertLastMessageEquals(jessid, 'You have blocked Nate')
 
-	def test_blocking_removes_game_context(self):
-		pass
+	def test_blocking_removes_opponent_context(self):
+		with self.subTest('Removes context when set to blocker'):
+			self.init_blocks()
+			with self.db.cursor() as cur:
+				cur.execute('''
+					SELECT opponent_context FROM player WHERE id = %s
+					''', [jessid])
+				context = cur.fetchone()[0]
+				self.assertIsNone(context)
+
+		with self.subTest('Leaves context when not set to blocker'):
+			self.handle_message(chadid, 'Play against izzy', expected_replies=2)
+			self.handle_message(izzyid, 'Play against nate', expected_replies=1)
+			self.handle_message(chadid, 'Block Izzy', expected_replies=1)
+			with self.db.cursor() as cur:
+				cur.execute('''
+					SELECT opponent_context FROM player WHERE id = %s
+					''', [izzyid])
+				context = cur.fetchone()[0]
+				self.assertEqual(context, nateid)
 
 
 	@unittest.skip

@@ -31,6 +31,10 @@ BEGIN
 			RETURN 1;	-- Redundant
 		END IF;
 
+		-- Remove opponent context if necessary
+		UPDATE player SET opponent_context = NULL
+		WHERE id = _targetid AND opponent_context = _playerid;
+
 		INSERT INTO player_blockage (playerid, blocked_playerid)
 		VALUES (_playerid, _targetid);
 		RETURN 0;		-- Success
