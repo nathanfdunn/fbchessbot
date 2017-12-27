@@ -263,6 +263,16 @@ def migration12():
 			message_typeid SMALLINT
 		)
 		''')
+	cur.connection.commit()
+
+def migration13():
+	op()
+	cur.execute('''
+		ALTER TABLE cb.message_log
+		ADD COLUMN sentat TIMESTAMP DEFAULT (NOW() at time zone 'utc')
+		''')
+	cur.connection.commit()
+
 
 def refresh_funcs():
 	# print('refreshing!')
