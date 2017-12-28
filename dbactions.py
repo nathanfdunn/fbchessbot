@@ -230,6 +230,7 @@ class DB:
 					gameid, board, active, whiteplayer, blackplayer, undo, outcome
 				FROM cb.get_context(%s)
 				''', [playerid])
+			cur.connection.commit()
 			row = cur.fetchone()
 			if row is None:						# user isn't even registered
 				return None, None, None
@@ -276,6 +277,7 @@ class DB:
 			cur.execute("""
 				SELECT max(id) FROM games WHERE (blackplayer = %s OR whiteplayer = %s)
 				""", [playerid, playerid])
+			cur.connection.commit()
 			return cur.fetchone()[0]
 
 
@@ -286,6 +288,7 @@ class DB:
 				FROM games WHERE 
 				id = %s
 				""", [gameid])
+			cur.connection.commit()
 			# Assumes there will be a match
 			return ChessBoard.from_byte_string(bytes(cur.fetchone()[0]))
 
@@ -309,6 +312,7 @@ class DB:
 			# cur.execute('SELECT id FROM player WHERE LOWER(nickname) = LOWER(%s)', [nickname])
 			cur.execute('SELECT cb.get_playerid(%s)', [nickname])
 			result = cur.fetchone()
+			cur.connection.commit()
 			if result:
 				return result[0]
 			return None
@@ -317,6 +321,7 @@ class DB:
 		with self.cursor() as cur:
 			cur.execute('SELECT nickname FROM player WHERE id = %s', [playerid])
 			result = cur.fetchone()
+			cur.connection.commit()
 			if result:
 				return result[0]
 			return None
@@ -325,6 +330,7 @@ class DB:
 		with self.cursor() as cur:
 			cur.execute('SELECT opponent_context FROM player WHERE id = %s', [playerid])
 			result = cur.fetchone()
+			cur.connection.commit()
 			if result:
 				return result[0]
 			return None
@@ -338,12 +344,14 @@ class DB:
 		with self.cursor() as cur:
 			cur.execute('SELECT id FROM player WHERE id = %s', [playerid])
 			result = cur.fetchone()
+			cur.connection.commit()
 			return result is not None
 
 	def player_from_nickname(self, nickname):
 		with self.cursor() as cur:
 			# cur.execute('SELECT id, nickname FROM player WHERE lower(nickname) = lower(%s)', [nickname])
 			cur.execute('SELECT id, nickname, active FROM player WHERE id = cb.get_playerid(%s)', [nickname])
+			cur.connection.commit()
 			result = cur.fetchone()
 			# Don't like overloading this...see what happens for now
 			if result is None:
@@ -373,6 +381,7 @@ class DB:
 			cur.execute('''
 				SELECT cb.blocked(%s, %s)
 				''', [playerid, otherid])
+			cur.connection.commit()
 			result = cur.fetchone()[0]
 			return [(result & 1 > 0), (result & 2 > 0)]
 
@@ -409,4 +418,5 @@ class DB:
 			cur.execute('''
 				SELECT active FROM player WHERE id = %s
 				''', [playerid])
+			cur.connection.commit()
 			return cur.fetchone()[0]
