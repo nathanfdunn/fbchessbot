@@ -139,6 +139,7 @@ class DB:
 			# This happens when we're testing against
 			# our local postgres db (hack)
 			self.conn = psycopg2.connect(DATABASE_URL)
+		self.conn.autocommit = True
 
 	def __del__(self):
 		self.conn.close()
@@ -154,7 +155,7 @@ class DB:
 			cur.execute('''
 				DELETE FROM player
 				''')
-			cur.connection.commit()
+			# cur.connection.commit()
 
 	def cursor(self):
 		# return self.conn.cursor()
@@ -172,14 +173,14 @@ class DB:
 			cur.execute('''
 				UPDATE games SET board = %s WHERE id = %s
 				''', [game.serialized(), game.id])
-			cur.connection.commit()
+			# cur.connection.commit()
 
 	def set_undo_flag(self, game, undo_flag):
 		with self.cursor() as cur:
 			cur.execute('''
 				UPDATE games SET undo = %s WHERE id = %s
 				''', [undo_flag, game.id])
-			cur.connection.commit()
+			# cur.connection.commit()
 
 	# Also 'finishes' the game by setting active to false
 	def set_outcome(self, game, outcome):
@@ -187,7 +188,7 @@ class DB:
 			cur.execute('''
 				UPDATE games SET active = FALSE, outcome = %s WHERE id = %s
 				''', [int(outcome), game.id])
-			cur.connection.commit()
+			# cur.connection.commit()
 
 	def create_new_game(self, whiteplayer, blackplayer):
 		with self.cursor() as cur:
@@ -204,7 +205,7 @@ class DB:
 					%s, TRUE, %s, %s, FALSE
 				)
 				""", [ChessBoard().to_byte_string(), whiteplayer, blackplayer])
-			cur.connection.commit()
+			# cur.connection.commit()
 
 	# Returns specified Player, opponent Player, active Game
 	def get_context(self, playerid):
@@ -230,7 +231,7 @@ class DB:
 					gameid, board, active, whiteplayer, blackplayer, undo, outcome
 				FROM cb.get_context(%s)
 				''', [playerid])
-			cur.connection.commit()
+			# cur.connection.commit()
 			row = cur.fetchone()
 			if row is None:						# user isn't even registered
 				return None, None, None
@@ -277,7 +278,7 @@ class DB:
 			cur.execute("""
 				SELECT max(id) FROM games WHERE (blackplayer = %s OR whiteplayer = %s)
 				""", [playerid, playerid])
-			cur.connection.commit()
+			# cur.connection.commit()
 			return cur.fetchone()[0]
 
 
@@ -288,7 +289,7 @@ class DB:
 				FROM games WHERE 
 				id = %s
 				""", [gameid])
-			cur.connection.commit()
+			# cur.connection.commit()
 			# Assumes there will be a match
 			return ChessBoard.from_byte_string(bytes(cur.fetchone()[0]))
 
@@ -300,11 +301,11 @@ class DB:
 
 			if user_exists:
 				cur.execute('UPDATE player SET nickname = %s WHERE id = %s', [nickname, playerid])
-				cur.connection.commit()
+				# cur.connection.commit()
 				return False
 			else:               # user does not exist
 				cur.execute('INSERT INTO player (id, nickname) VALUES (%s, %s)', [playerid, nickname])
-				cur.connection.commit()
+				# cur.connection.commit()
 				return True
 
 	def id_from_nickname(self, nickname):
@@ -312,7 +313,7 @@ class DB:
 			# cur.execute('SELECT id FROM player WHERE LOWER(nickname) = LOWER(%s)', [nickname])
 			cur.execute('SELECT cb.get_playerid(%s)', [nickname])
 			result = cur.fetchone()
-			cur.connection.commit()
+			# cur.connection.commit()
 			if result:
 				return result[0]
 			return None
@@ -321,7 +322,7 @@ class DB:
 		with self.cursor() as cur:
 			cur.execute('SELECT nickname FROM player WHERE id = %s', [playerid])
 			result = cur.fetchone()
-			cur.connection.commit()
+			# cur.connection.commit()
 			if result:
 				return result[0]
 			return None
@@ -330,7 +331,7 @@ class DB:
 		with self.cursor() as cur:
 			cur.execute('SELECT opponent_context FROM player WHERE id = %s', [playerid])
 			result = cur.fetchone()
-			cur.connection.commit()
+			# cur.connection.commit()
 			if result:
 				return result[0]
 			return None
@@ -338,20 +339,20 @@ class DB:
 	def set_opponent_context(self, challengerid, opponentid):
 		with self.cursor() as cur:
 			cur.execute('UPDATE player SET opponent_context = %s WHERE id = %s', [opponentid, challengerid])
-			cur.connection.commit()
+			# cur.connection.commit()
 
 	def user_is_registered(self, playerid):
 		with self.cursor() as cur:
 			cur.execute('SELECT id FROM player WHERE id = %s', [playerid])
 			result = cur.fetchone()
-			cur.connection.commit()
+			# cur.connection.commit()
 			return result is not None
 
 	def player_from_nickname(self, nickname):
 		with self.cursor() as cur:
 			# cur.execute('SELECT id, nickname FROM player WHERE lower(nickname) = lower(%s)', [nickname])
 			cur.execute('SELECT id, nickname, active FROM player WHERE id = cb.get_playerid(%s)', [nickname])
-			cur.connection.commit()
+			# cur.connection.commit()
 			result = cur.fetchone()
 			# Don't like overloading this...see what happens for now
 			if result is None:
@@ -365,7 +366,7 @@ class DB:
 			cur.execute('''
 				SELECT cb.block_player(%s, %s, TRUE)
 				''', [playerid, targetid])
-			cur.connection.commit()
+			# cur.connection.commit()
 			return cur.fetchone()[0]
 
 	def unblock_player(self, playerid, targetid):
@@ -373,7 +374,7 @@ class DB:
 			cur.execute('''
 				SELECT cb.block_player(%s, %s, FALSE)
 				''', [playerid, targetid])
-			cur.connection.commit()
+			# cur.connection.commit()
 			return cur.fetchone()[0]
 
 	def is_blocked(self, playerid, otherid):
@@ -381,7 +382,7 @@ class DB:
 			cur.execute('''
 				SELECT cb.blocked(%s, %s)
 				''', [playerid, otherid])
-			cur.connection.commit()
+			# cur.connection.commit()
 			result = cur.fetchone()[0]
 			return [(result & 1 > 0), (result & 2 > 0)]
 
@@ -397,26 +398,26 @@ class DB:
 				)
 				VALUES (%s, %s, %s, %s)
 				''', [senderid, recipientid, message, int(message_type)])
-			cur.connection.commit()
+			# cur.connection.commit()
 
 	def deactivate_player(self, playerid):
 		with self.cursor() as cur:
 			cur.execute('''
 				UPDATE player SET active = FALSE WHERE id = %s
 				''', [playerid])
-			cur.connection.commit()
+			# cur.connection.commit()
 
 	def set_player_activation(self, playerid, activate):
 		with self.cursor() as cur:
 			cur.execute('''
 				UPDATE player SET active = %s WHERE id = %s
 				''', [activate, playerid])
-			cur.connection.commit()
+			# cur.connection.commit()
 
 	def player_is_active(self, playerid):
 		with self.cursor() as cur:
 			cur.execute('''
 				SELECT active FROM player WHERE id = %s
 				''', [playerid])
-			cur.connection.commit()
+			# cur.connection.commit()
 			return cur.fetchone()[0]
