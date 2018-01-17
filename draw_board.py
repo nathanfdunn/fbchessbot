@@ -87,7 +87,8 @@ font = ImageFont.truetype("arial.ttf", 30)
 
 for i in range(8):
 	for j in range(8):
-		color = LIGHT if (i+j) % 2 else DARK
+		# color = LIGHT if (i+j) % 2 else DARK
+		color = DARK if (i+j) % 2 else LIGHT
 		coord = (border + i*64, border + j*64, border + (i+1)*64, border + (j+1)*64)
 		draw.rectangle(coord, color)
 		if j == 0:
@@ -114,7 +115,8 @@ font = ImageFont.truetype("arial.ttf", 30)
 
 for i in range(8):
 	for j in range(8):
-		color = LIGHT if (i+j) % 2 else DARK
+		# color = LIGHT if (i+j) % 2 else DARK
+		color = DARK if (i+j) % 2 else LIGHT
 		coord = (border + i*64, border + j*64, border + (i+1)*64, border + (j+1)*64)
 		draw.rectangle(coord, color)
 		if j == 0:

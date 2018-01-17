@@ -86,8 +86,7 @@ class BaseTest(unittest.TestCase):
 		# This only works because we're multiply inheriting from unittest.TestCase as well
 		self.assertEqual(last_rep, rep_url)
 
-	# 'wb' annotation
-	def assertLastBoardImageEqualsI(self, fen, perspective : 'wb', recipient, *, target_index=-1):
+	def assertLastBoardImageEqualsI(self, fen, perspective : str, recipient, *, target_index=-1):
 		image_url = f'https://fbchessbot.herokuapp.com/board/{fen}?perspective={perspective}'
 		if not sent_game_urls[recipient]:
 			raise AssertionError(
