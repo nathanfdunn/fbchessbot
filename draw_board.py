@@ -132,3 +132,31 @@ for i in range(8):
 
 img.save('board_black.png')
 
+def draw_logo():
+	center = (8*PIECE + 2*BORDER, 8*PIECE + 2*BORDER)/2
+
+	logo_image = Image.open('board.png').copy()
+
+	king = Image.open('sprites/whiteking.png')
+	logo_image.paste(king, )
+
+j, piece in enumerate(row):
+			if piece in piece_image_map:
+				piece_image = Image.open(piece_image_map[piece])
+				board_image.paste(piece_image, (BORDER + PIECE*j, BORDER + PIECE*i), piece_image)
+
+	piece_image_map = {
+		'r': 'sprites/blackrook.png',
+		'n': 'sprites/blackknight.png',
+		'b': 'sprites/blackbishop.png',
+		'q': 'sprites/blackqueen.png',
+		'k': 'sprites/blackking.png',
+		'p': 'sprites/blackpawn.png',
+
+		'R': 'sprites/whiterook.png',
+		'N': 'sprites/whiteknight.png',
+		'B': 'sprites/whitebishop.png',
+		'Q': 'sprites/whitequeen.png',
+		'K': 'sprites/whiteking.png',
+		'P': 'sprites/whitepawn.png'
+	}
