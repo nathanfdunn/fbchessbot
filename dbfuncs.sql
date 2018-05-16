@@ -156,7 +156,7 @@ AS
 $$
 BEGIN
 	RETURN QUERY SELECT 
-		g.gameid, 
+		g.id, 
 		p.id AS playerid, 
 		p.nickname AS player_nickname, 
 		o.id AS opponentid, 
