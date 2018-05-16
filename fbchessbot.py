@@ -75,7 +75,7 @@ def send_reminders():
 	for recipient, messages in reminders.items():
 		for message in messages:
 			if 'rylan' in message.lower() and 'nate' in message.lower():
-				self.send_message(recipient, message)
+				send_message(recipient, message)
 
 
 @app.route('/pgn/<game_id>', methods=['GET'])
