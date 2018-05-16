@@ -76,7 +76,7 @@ def send_reminders():
 	for recipient, messages in reminders.items():
 		for message in messages:
 			if 'rylan' in message.lower() and 'nate' in message.lower():
-				if recipient = 1331390946942076:
+				if recipient == 1331390946942076:
 					send_message(recipient, message)
 				else:
 					fail = True
