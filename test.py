@@ -588,6 +588,10 @@ class TestGamePlay(GamePlayTest):
 
 	def test_reminders(self):
 		self.perform_move(nateid, 'e4')
+		with self.db.cursor() as cur:
+			cur.execute('''
+				UPDATE player SET send_reminders = TRUE WHERE id = %s
+				''', [nateid])
 		reminders = self.db.get_reminders()
 		self.assertTrue(len(reminders) > 0)
 

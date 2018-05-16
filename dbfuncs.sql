@@ -171,8 +171,8 @@ BEGIN
 			(g.blackplayer = p.id AND g.whiteplayer = o.id)
 		)
 		AND (g.active = TRUE)
-	-- WHERE p.send_reminders = TRUE
-	WHERE 1=1;
+	WHERE p.send_reminders = TRUE;
+	-- WHERE 1=1;
 		-- AND EXTRACT(EPOCH FROM (g.last_moved_at_utc - (NOW() at time zone 'utc'))) > 0;
 -- TODO filter out inactive players, etc.
 END

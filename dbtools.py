@@ -34,7 +34,7 @@ def init_connection():
 def op():
 	global cur
 	init_connection()
-	if cur is None:
+	if cur is None or cur.closed:
 		cur = conn.cursor()
 	return cur
 
