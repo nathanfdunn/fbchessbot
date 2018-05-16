@@ -69,6 +69,14 @@ def board_imageII(fen):
 	# board_image.save(board_image_name)
 	return send_file(board_image_name)
 
+@app.route('/send_reminders', methods=['GET'])
+def send_reminders():
+	reminders = db.get_reminders()
+	for recipient, messages in reminders:
+		for message in messages:
+			if 'rylan' in message.lower() and 'nate' in message.lower():
+				self.send_message(recipient, message)
+
 
 @app.route('/pgn/<game_id>', methods=['GET'])
 def board_pgn(game_id):

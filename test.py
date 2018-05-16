@@ -564,6 +564,7 @@ class TestGamePlay(GamePlayTest):
 		self.assertLastMessageEquals(nateid, 'Check!')
 
 	def test_timestamp_update(self):
+		# TODO convert test to use the Game object
 		# sanity check...
 		with self.db.cursor() as cur:
 			cur.execute('SELECT last_moved_at_utc FROM games')

@@ -93,7 +93,8 @@ CREATE OR REPLACE FUNCTION cb.get_context(
 RETURNS TABLE (
 	playerid BIGINT, player_nickname VARCHAR(32), player_opponentid BIGINT, player_active BOOLEAN,
 	opponentid BIGINT, opponent_nickname VARCHAR(32), opponent_opponentid BIGINT, opponent_active BOOLEAN,
-	gameid INT, board BYTEA, active BOOLEAN, whiteplayer BIGINT, blackplayer BIGINT, undo BOOLEAN, outcome INT
+	gameid INT, board BYTEA, active BOOLEAN, whiteplayer BIGINT, blackplayer BIGINT, undo BOOLEAN, outcome INT,
+	last_moved_at_utc TIMESTAMP
 )
 AS
 $$
@@ -101,7 +102,7 @@ BEGIN
 	RETURN QUERY SELECT
 		p.id AS playerid, p.nickname AS player_nickname, p.opponent_context AS player_opponentid, p.active AS player_active,
 		o.id AS opponentid, o.nickname AS opponent_nickname, o.opponent_context AS opponent_opponentid, o.active AS opponent_active,
-		g.id AS gameid, g.board, g.active, g.whiteplayer, g.blackplayer, g.undo, g.outcome
+		g.id AS gameid, g.board, g.active, g.whiteplayer, g.blackplayer, g.undo, g.outcome, g.last_moved_at_utc
 	FROM player p
 	LEFT JOIN player o ON p.opponent_context = o.id
 	LEFT JOIN games g ON (
@@ -135,6 +136,43 @@ BEGIN
 		outcome = COALESCE(_outcome, outcome),
 		last_moved_at_utc = COALESCE(_last_moved_at_utc, last_moved_at_utc)
 	WHERE id = _gameid;
-	
+
+END
+$$ LANGUAGE plpgsql;
+
+
+CREATE OR REPLACE FUNCTION cb.get_reminders(
+
+)
+RETURNS TABLE (
+	gameid INT, 
+	playerid BIGINT, 
+	player_nickname VARCHAR(32), 
+	opponentid BIGINT, 
+	opponent_nickname VARCHAR(32),
+	delay INT
+)
+AS
+$$
+BEGIN
+	RETURN QUERY SELECT 
+		g.gameid, 
+		p.id AS playerid, 
+		p.nickname AS player_nickname, 
+		o.id AS opponentid, 
+		o.nickname AS opponent_nickname,
+		EXTRACT(MINUTE FROM (g.last_moved_at_utc - (NOW() at time zone 'utc'))) AS delay
+
+	FROM player p
+	LEFT JOIN player o ON p.opponent_context = o.id
+	LEFT JOIN games g ON (
+			(g.whiteplayer = p.id AND g.blackplayer = o.id) 
+			OR 
+			(g.blackplayer = p.id AND g.whiteplayer = o.id)
+		)
+		AND (g.active = TRUE)
+	WHERE p.send_reminders = TRUE
+		AND EXTRACT(EPOCH FROM (g.last_moved_at_utc - (NOW() at time zone 'utc'))) > 0;
+-- TODO filter out inactive players, etc.
 END
 $$ LANGUAGE plpgsql;

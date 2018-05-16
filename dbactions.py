@@ -68,7 +68,7 @@ class ChessBoard(chess.Board):
 		return board.fen()
 
 class Game:
-	def __init__(self, id, raw_board, active, whiteplayer, blackplayer, undo, outcome):
+	def __init__(self, id, raw_board, active, whiteplayer, blackplayer, undo, outcome, last_moved_at_utc):
 		self.id = id
 		self.board = ChessBoard.from_byte_string(raw_board)
 
@@ -77,6 +77,7 @@ class Game:
 		self.blackplayer = blackplayer
 		self.undo = undo
 		self.outcome = outcome
+		self.last_moved_at_utc = last_moved_at_utc
 
 	def display(self):
 		print(self.board)
@@ -235,7 +236,7 @@ class DB:
 			cur.execute('''
 				SELECT playerid, player_nickname, player_opponentid, player_active,
 					opponentid, opponent_nickname, opponent_opponentid, opponent_active,
-					gameid, board, active, whiteplayer, blackplayer, undo, outcome
+					gameid, board, active, whiteplayer, blackplayer, undo, outcome, last_moved_at_utc
 				FROM cb.get_context(%s)
 				''', [playerid])
 			# cur.connection.commit()
@@ -266,7 +267,7 @@ class DB:
 			if row.gameid is None:
 				game = None
 			else:
-				game = Game(row.gameid, bytes(row.board), row.active, whiteplayer, blackplayer, row.undo, row.outcome)
+				game = Game(row.gameid, bytes(row.board), row.active, whiteplayer, blackplayer, row.undo, row.outcome, row.last_moved_at_utc)
 
 			return player, opponent, game
 
@@ -428,3 +429,19 @@ class DB:
 				''', [playerid])
 			# cur.connection.commit()
 			return cur.fetchone()[0]
+
+
+	def get_reminders(self):
+		out = collections.defaultdict(list)
+		with self.cursor() as cur:
+			cur.execute('''
+				SELECT playerid, player_nickname,
+					opponentid, opponent_nickname,
+					delay
+				FROM cb.get_reminders()
+				''')
+
+			for value in cur:
+				out[value.playerid].append(f"Hi {value.player_nickname}, I see you haven't made a move in your game with {value.opponent_nickname} in {value.delay} minutes")
+				out[value.opponentid].append(f"Hi {value.opponent_nickname}, I see you haven't made a move in your game with {value.player_nickname} in {value.delay} minutes")
+		return out
