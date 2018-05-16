@@ -173,6 +173,10 @@ class BaseTest(unittest.TestCase):
 		if clear:
 			clear_mocks()
 
+	def perform_move(self, playerid, move):
+		self.handle_message(playerid, move, expected_replies=None)
+
+
 class TestUnregisteredResponses(BaseTest):
 	def test_does_display_intro(self):
 		newb = 12345678910
@@ -558,6 +562,29 @@ class TestGamePlay(GamePlayTest):
 		self.assertLastMessageEquals(jessid, 'Nate played Qh5', target_index=-2)
 		self.assertLastMessageEquals(jessid, 'Check!', target_index=-1)
 		self.assertLastMessageEquals(nateid, 'Check!')
+
+	def test_timestamp_update(self):
+		# sanity check...
+		with self.db.cursor() as cur:
+			cur.execute('SELECT last_moved_at_utc FROM games')
+			self.assertIsNone(cur.fetchone()[0])
+		
+		self.perform_move(nateid, 'e4')
+
+		with self.db.cursor() as cur:
+			cur.execute('SELECT last_moved_at_utc FROM games')
+			time1 = cur.fetchone()[0]
+		
+		self.assertIsNotNone(time1)
+		self.perform_move(jessid, 'e5')
+
+		with self.db.cursor() as cur:
+			cur.execute('SELECT last_moved_at_utc FROM games')
+			time2 = cur.fetchone()[0]
+
+		self.assertIsNotNone(time2)
+		self.assertTrue(time2 > time1)
+
 
 class TestUndo(GamePlayTest):
 	def test_undo(self):

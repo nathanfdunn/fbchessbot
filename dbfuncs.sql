@@ -113,3 +113,28 @@ BEGIN
 	WHERE p.id = _playerid;
 END
 $$ LANGUAGE plpgsql;
+
+
+CREATE OR REPLACE FUNCTION cb.update_game(
+	_gameid INT,
+	_boardstate BYTEA = NULL,
+	_undo BOOLEAN = NULL,
+	_active BOOLEAN = NULL,
+	_outcome INT = NULL,
+	_last_moved_at_utc TIMESTAMP = NULL
+)
+RETURNS VOID
+AS
+$$
+BEGIN
+
+	UPDATE games SET
+		board = COALESCE(_boardstate, board),
+		undo = COALESCE(_undo, undo),
+		active = COALESCE(_active, active),
+		outcome = COALESCE(_outcome, outcome),
+		last_moved_at_utc = COALESCE(_last_moved_at_utc, last_moved_at_utc)
+	WHERE id = _gameid;
+	
+END
+$$ LANGUAGE plpgsql;

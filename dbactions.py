@@ -1,4 +1,5 @@
 import collections
+import datetime
 import os
 import pickle
 from urllib.parse import urlparse
@@ -171,8 +172,14 @@ class DB:
 	def save_game(self, game):
 		with self.cursor() as cur:
 			cur.execute('''
-				UPDATE games SET board = %s WHERE id = %s
-				''', [game.serialized(), game.id])
+				SELECT  cb.update_game(
+					_gameid=>%s, 
+					_boardstate=>%s, 
+					_last_moved_at_utc=>%s);
+				''', [game.id, game.serialized(), datetime.datetime.utcnow()])
+			# cur.execute('''
+			# 	UPDATE games SET board = %s WHERE id = %s
+			# 	''', [game.serialized(), game.id])
 			# cur.connection.commit()
 
 	def set_undo_flag(self, game, undo_flag):

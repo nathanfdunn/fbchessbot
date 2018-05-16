@@ -256,8 +256,8 @@ def migration12():
 	cur.execute('''
 		CREATE TABLE cb.message_log ( --note, we use the schema here
 			id SERIAL PRIMARY KEY,
-			senderid BIGINT REFERENCES player(id),
-			recipientid BIGINT REFERENCES player(id),
+			senderid BIGINT, --REFERENCES player(id),
+			recipientid BIGINT, --REFERENCES player(id),
 			message VARCHAR(1024),
 			-- Not worth another table: 1 = from player, 2 = text from chessbot, 3 = image from chessbot
 			message_typeid SMALLINT
@@ -273,6 +273,17 @@ def migration13():
 		''')
 	cur.connection.commit()
 
+@register_migration
+def migration14():
+	op()
+	cur.execute('''
+		ALTER TABLE player
+		ADD COLUMN 	send_reminders BOOLEAN NOT NULL DEFAULT (FALSE),
+					add column last_reminded_at_utc TIMESTAMP;
+		ALTER TABLE games
+		ADD COLUMN last_moved_at_utc TIMESTAMP;
+		''')
+	cur.connection.commit()
 
 def refresh_funcs():
 	# print('refreshing!')
