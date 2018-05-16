@@ -586,6 +586,10 @@ class TestGamePlay(GamePlayTest):
 		self.assertIsNotNone(time2)
 		self.assertTrue(time2 > time1)
 
+	def test_reminders(self):
+		self.perform_move(nateid, 'e4')
+		reminders = self.db.get_reminders()
+		self.assertTrue(len(reminders) > 0)
 
 class TestUndo(GamePlayTest):
 	def test_undo(self):

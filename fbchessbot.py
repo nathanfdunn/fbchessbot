@@ -72,7 +72,7 @@ def board_imageII(fen):
 @app.route('/send_reminders', methods=['GET'])
 def send_reminders():
 	reminders = db.get_reminders()
-	for recipient, messages in reminders:
+	for recipient, messages in reminders.items():
 		for message in messages:
 			if 'rylan' in message.lower() and 'nate' in message.lower():
 				self.send_message(recipient, message)
