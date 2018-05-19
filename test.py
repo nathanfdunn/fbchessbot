@@ -4,6 +4,7 @@ if not sys.flags.debug:
 
 from collections import defaultdict
 import datetime
+import time
 import unittest
 
 import chess
@@ -46,6 +47,13 @@ nateid = 32233848429
 chadid = 83727482939
 jessid = 47463849663
 izzyid = 28394578322
+
+namemap = {
+	nateid: 'Nate',
+	chadid: 'Chad',
+	jessid: 'Jess',
+	izzyid: 'Izzy'
+}
 
 class NowProvider:
 	def __init__(self, static_utc_now):
@@ -129,13 +137,14 @@ class BaseTest(unittest.TestCase):
 
 	@classmethod
 	def setUpClass(cls):
-		cls.db = fbchessbot.db
+		cls.db = fbchessbot.db = dbactions.DB()
 		cls.db.delete_all()
 
 	@classmethod
 	def tearDownClass(cls):
 		cls.db.delete_all()
-		del cls.db
+		del cls.db, fbchessbot.db
+
 
 	def tearDown(self):
 		self.db.delete_all()
@@ -382,6 +391,20 @@ def board_from_str(board, extras):
 problemboard = None
 
 class TestGamePlay(GamePlayTest):
+	def test_active_player_accurate(self):
+		with self.subTest('Initial - white to play'), self.db.cursor() as cur:
+			cur.execute('''
+				SELECT white_to_play FROM games
+				''')
+			self.assertTrue(cur.fetchone()[0])
+
+		self.handle_message(nateid, 'e4', expected_replies=3)
+		with self.subTest('Turn 2 - black to play'), self.db.cursor() as cur:
+			cur.execute('''
+				SELECT white_to_play FROM games
+				''')
+			self.assertFalse(cur.fetchone()[0])
+
 	def test_basic_moves(self):
 		self.handle_message(nateid, 'e4', expected_replies=3)
 		self.assertLastMessageEquals(jessid, 'Nate played e4')
@@ -571,6 +594,7 @@ class TestGamePlay(GamePlayTest):
 			time1 = cur.fetchone()[0]
 		
 		self.assertIsNotNone(time1)
+
 		self.perform_move(jessid, 'e5')
 
 		with self.db.cursor() as cur:
@@ -579,6 +603,7 @@ class TestGamePlay(GamePlayTest):
 
 		self.assertIsNotNone(time2)
 		self.assertTrue(time2 > time1)
+		# self.assertEqual(time1, time2)
 
 class TestUndo(GamePlayTest):
 	def test_undo(self):
@@ -914,50 +939,136 @@ class TestChallengeAcceptance(BaseTest):
 	def test_can_challenge_with_color(self):
 		self.handle_message(nateid, 'Play against jess white', expected_replies=3)
 
-
 class RemindersTest(BaseTest):
 	def set_now(self, *, days=0, hours=0):
 		time = datetime.datetime(2018, 1, 1) + datetime.timedelta(days=days, hours=hours)
 		self.db.now_provider = NowProvider(time)
 
+	def assertReminderCountEquals(self, reminders, expected):
+		actual = sum(len(messages) for messages in reminders.values())
+		self.assertEqual(actual, expected)
+
 	def setUp(self):
+		self.db.delay_threshold = 86400
 		self.set_now()
 		self.register_all()
 		# self.handle_message(nateid, 'Reminders on')
-		with self.db.cursor() as cur:
-			# TODO build the command
-			cur.execute('''
-				update player set send_reminders = true where id = %s
-				''', [nateid])
-			cur.connection.commit()
+		self.db.set_player_reminders(nateid, True)
+		self.db.set_player_reminders(chadid, True)
 		self.handle_message(nateid, 'Play against Jess', expected_replies=None)
 		self.handle_message(nateid, 'New game white', expected_replies=None)
+
+		# self.handle_message(chadid, 'Play against Izzy', expected_replies=None)
+		# self.handle_message(chadid, 'New game black', expected_replies=None)
+
 		# try:
 		# 	self.handle_message(nateid, 'New game white', expected_replies=None)
 		# except Exception as e:
 		# 	raise Exception('wtf', e)
 
-	def test_no_reminders_without_delay(self):
-		self.set_now()
-		reminders = self.db.get_reminders()
-		self.assertEqual(len(reminders), 0)
+	def test_reminder_times(self):
+		with self.subTest('no delay'):
+			self.set_now()
+			reminders = self.db.get_reminders()
+			self.assertEqual(reminders, {})
 
-	def test_no_reminders_after_one_hour(self):
-		self.set_now(hours=1)
-		reminders = self.db.get_reminders()
-		self.assertEqual(len(reminders), 0)
+		with self.subTest('1 hour'):
+			self.set_now(hours=1)
+			reminders = self.db.get_reminders()
+			self.assertEqual(reminders, {})
+
+		with self.subTest('5 days'):
+			self.set_now(days=5)
+			reminders = self.db.get_reminders()
+			self.assertEqual(reminders, {
+				nateid: {(nateid, 'Nate', jessid, 'Jess', True, 5)}
+				})
 
 	def test_reminders_after_one_day(self):
-		self.set_now(days=1, hours=1)
-		reminders = self.db.get_reminders()
-		self.assertEqual(len(reminders), 1)
+		with self.subTest('white player active'):
+			self.set_now(days=1, hours=12)
+			reminders = self.db.get_reminders()
+			self.assertEqual(reminders, {
+				nateid: {(nateid, 'Nate', jessid, 'Jess', True, 1.5)}
+			})
 
-	def test_reminders_after_five_days(self):
-		self.set_now(days=5, hours=1)
-		reminders = self.db.get_reminders()
-		self.assertEqual(len(reminders), 1)
+		with self.subTest('white player inactive'):
+			self.set_now()
+			self.handle_message(nateid, 'e4')
+			self.set_now(days=1, hours=12)
+			reminders = self.db.get_reminders()
+			self.assertEqual(reminders, {})
+		
+		with self.subTest('black player inactive'):
+			self.handle_message(nateid, 'resign')
+			self.set_now()
+			self.handle_message(nateid, 'new game black')
+			self.set_now(days=1, hours=12)
+			reminders = self.db.get_reminders()
+			self.assertEqual(reminders, {
+				# nateid: {(nateid, 'Nate', jessid, 'Jess', False, 1.5)}
+				})
 
-	@unittest.skip
+		with self.subTest('black player active'):
+			self.set_now()
+			self.handle_message(jessid, 'e4')
+			self.set_now(days=1, hours=12)
+			reminders = self.db.get_reminders()
+			self.assertEqual(reminders, {
+				nateid: {(nateid, 'Nate', jessid, 'Jess', False, 1.5)}
+				})
+
+
+	def test_both_opt_in(self):
+		self.set_now(days=2)
+		self.handle_message(jessid, 'reminders on')
+		reminders = self.db.get_reminders()
+		self.assertEqual(reminders,
+			{
+				nateid: {(nateid, 'Nate', jessid, 'Jess', True, 2)},
+			})
+
+		self.set_now()
+		self.handle_message(nateid, 'e4')
+		self.set_now(days=2)
+		reminders = self.db.get_reminders()
+		self.assertEqual(reminders,
+			{
+				jessid: {(jessid, 'Jess', nateid, 'Nate', False, 2)}
+			})
+
+	def test_multiple_games(self):
+		self.set_now()
+		self.handle_message(nateid, 'Play against izzy', expected_replies=2)
+		self.handle_message(nateid, 'new game black', expected_replies=3)
+		self.set_now(days=2)
+		reminders = self.db.get_reminders()
+		# print(reminders, 'first')
+		with self.subTest('only active in white'):
+			self.assertEqual(reminders,
+				{
+					nateid: {(nateid, 'Nate', jessid, 'Jess', True, 2.0)}
+				})
+
+		# print(reminders, 'second')
+		with self.subTest('active in both'):
+			self.set_now()
+			self.handle_message(izzyid, 'e4')
+			# print('messages:',sent_messages)
+			# print('reminders:',reminders)
+			self.set_now(days=2)
+			reminders = self.db.get_reminders()
+			self.assertEqual(reminders,
+				{
+					nateid: {
+						(nateid, 'Nate', jessid, 'Jess', True, 2.0),
+						(nateid, 'Nate', izzyid, 'Izzy', False, 2.0)
+					}
+				})
+
+
+
+	# @unittest.skip
 	def test_reminders_reset(self):
 		with self.subTest('initial'):
 			self.set_now(days=5)
@@ -970,7 +1081,43 @@ class RemindersTest(BaseTest):
 			reminders = self.db.get_reminders()
 			self.assertEqual(len(reminders), 0)
 
+	def test_reminders_opt_out(self):
+		self.set_now()
+		self.handle_message(nateid, 'e4', expected_replies=None)
+		self.set_now(days=5)
+		with self.subTest('Jess opting in'):
+			with self.db.cursor() as cur:
+				cur.execute('''
+					SELECT send_reminders FROM player WHERE id = %s
+					''', [jessid])
+				self.assertFalse(cur.fetchone()[0])
+			
+			self.handle_message(jessid, 'reminders on', expected_replies=1)
+			self.assertLastMessageEquals(jessid, 'You will now receive reminders')
 
+			with self.db.cursor() as cur:
+				cur.execute('''
+					SELECT send_reminders FROM player WHERE id = %s
+					''', [jessid])
+				self.assertTrue(cur.fetchone()[0])
+
+			reminders = self.db.get_reminders()
+			self.assertEqual(reminders, {
+				jessid: {(jessid, 'Jess', nateid, 'Nate', False, 5)}
+				})
+
+		with self.subTest('Jess opting out'):
+			self.handle_message(jessid, 'reminders off', expected_replies=1)
+			self.assertLastMessageEquals(jessid, 'You will no longer receive reminders')
+
+			with self.db.cursor() as cur:
+				cur.execute('''
+					SELECT send_reminders FROM player WHERE id = %s
+					''', [jessid])
+				self.assertFalse(cur.fetchone()[0])
+
+			reminders = self.db.get_reminders()
+			self.assertEqual(reminders, {})
 
 	# def test_reminders(self):
 	# 	self.perform_move(nateid, 'e4')

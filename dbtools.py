@@ -374,3 +374,11 @@ def migration15():
 		ALTER TABLE games ADD COLUMN created_at_utc TIMESTAMP NOT NULL DEFAULT (NOW() at time zone 'utc')
 		''')
 	cur.connection.commit()
+
+@register_migration
+def migration16():
+	op()
+	cur.execute('''
+		ALTER TABLE games ADD COLUMN white_to_play BOOLEAN NOT NULL DEFAULT(TRUE)
+		''')
+	cur.connection.commit()

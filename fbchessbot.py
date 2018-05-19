@@ -69,6 +69,9 @@ def board_imageII(fen):
 	# board_image.save(board_image_name)
 	return send_file(board_image_name)
 
+# def format_reminders(reminders):
+	
+
 @app.route('/send_reminders', methods=['GET'])
 def send_reminders():
 	reminders = db.get_reminders()
@@ -436,6 +439,18 @@ def deactivate(sender):
 def activate(sender):
 	db.set_player_activation(sender, True)
 	send_message(sender, constants.activation_message)
+
+@command(receive_args=True)
+def reminders(offon, sender):
+	offon = offon.lower()
+	if offon == 'off':
+		db.set_player_reminders(sender, False)
+		send_message(sender, 'You will no longer receive reminders')
+	elif offon == 'on':
+		db.set_player_reminders(sender, True)
+		send_message(sender, 'You will now receive reminders')
+	else:
+		send_message(sender, "Try either 'reminders off' or 'reminders on'")
 
 def normalize_move(game, move):
 	if not move:

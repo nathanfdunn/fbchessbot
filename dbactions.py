@@ -178,8 +178,9 @@ class DB:
 				SELECT  cb.update_game(
 					_gameid=>%s,
 					_boardstate=>%s,
-					_last_moved_at_utc=>%s);
-				''', [game.id, game.serialized(), self.now_provider.utcnow()])
+					_last_moved_at_utc=>%s,
+					_white_to_play=>%s);
+				''', [game.id, game.serialized(), self.now_provider.utcnow(), game.is_active_player(constants.WHITE)])
 			# cur.execute('''
 			# 	UPDATE games SET board = %s WHERE id = %s
 			# 	''', [game.serialized(), game.id])
@@ -398,6 +399,12 @@ class DB:
 				''', [activate, playerid])
 			# cur.connection.commit()
 
+	def set_player_reminders(self, playerid, send_reminders):
+		with self.cursor() as cur:
+			cur.execute('''
+				UPDATE player SET send_reminders = %s WHERE id = %s
+				''', [send_reminders, playerid])
+
 	def player_is_active(self, playerid):
 		with self.cursor() as cur:
 			cur.execute('''
@@ -406,18 +413,46 @@ class DB:
 			# cur.connection.commit()
 			return cur.fetchone()[0]
 
+	# def format_reminder(self, player_nickname, opponent_nickname, days):
+	# 	return f"Hi {player_nickname}, I see you haven't made a move in your game with {opponent_nickname} in {days} days"
 
-	def get_reminders(self):
-		out = collections.defaultdict(list)
+	delay_threshold = 86400*2
+	# Returns a Dict[int, Set[Tuple[int, str, int, str, double]]]
+	def get_reminders(self, delay_threshold=None):
+		if delay_threshold is None:
+			delay_threshold = self.delay_threshold
+		out = collections.defaultdict(set)
 		with self.cursor() as cur:
 			cur.execute('''
-				SELECT playerid, player_nickname,
-					opponentid, opponent_nickname,
+				SELECT whiteplayerid, whiteplayer_nickname, whiteplayer_send_reminders,
+					blackplayerid, blackplayer_nickname, blackplayer_send_reminders,
+					white_to_play,
 					delay
-				FROM cb.get_reminders(%s)
+				FROM cb.get_statuses(%s)
 				''', [self.now_provider.utcnow()])
 
 			for value in cur:
-				# minutes = value.delay / 60
-				out[value.playerid].append(f"Hi {value.player_nickname}, I see you haven't made a move in your game with {value.opponent_nickname} in {round(value.delay / 86400, 1)} minutes")
-		return out
+				if value.delay < delay_threshold:
+					continue
+
+				days = round(value.delay / 86400, 1)
+				if value.whiteplayer_send_reminders and value.white_to_play:
+					out[value.whiteplayerid].add((
+						value.whiteplayerid,
+						value.whiteplayer_nickname,
+						value.blackplayerid,
+						value.blackplayer_nickname,
+						value.white_to_play,
+						days
+						))
+				if value.blackplayer_send_reminders and not value.white_to_play:
+					out[value.blackplayerid].add((
+						value.blackplayerid,
+						value.blackplayer_nickname,
+						value.whiteplayerid,
+						value.whiteplayer_nickname,
+						value.white_to_play,
+						days
+						))
+
+		return dict(out.items())

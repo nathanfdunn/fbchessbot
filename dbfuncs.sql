@@ -122,7 +122,8 @@ CREATE OR REPLACE FUNCTION cb.update_game(
 	_undo BOOLEAN = NULL,
 	_active BOOLEAN = NULL,
 	_outcome INT = NULL,
-	_last_moved_at_utc TIMESTAMP = NULL
+	_last_moved_at_utc TIMESTAMP = NULL,
+	_white_to_play BOOLEAN = NULL
 )
 RETURNS VOID
 AS
@@ -134,22 +135,26 @@ BEGIN
 		undo = COALESCE(_undo, undo),
 		active = COALESCE(_active, active),
 		outcome = COALESCE(_outcome, outcome),
-		last_moved_at_utc = COALESCE(_last_moved_at_utc, last_moved_at_utc)
+		last_moved_at_utc = COALESCE(_last_moved_at_utc, last_moved_at_utc),
+		white_to_play = COALESCE(_white_to_play, white_to_play)
 	WHERE id = _gameid;
 
 END
 $$ LANGUAGE plpgsql;
 
 
-CREATE OR REPLACE FUNCTION cb.get_reminders(
+CREATE OR REPLACE FUNCTION cb.get_statuses(
 	_now_utc TIMESTAMP
 )
 RETURNS TABLE (
 	gameid INT, 
-	playerid BIGINT,
-	player_nickname VARCHAR(32), 
-	opponentid BIGINT, 
-	opponent_nickname VARCHAR(32),
+	whiteplayerid BIGINT,
+	whiteplayer_nickname VARCHAR(32), 
+	whiteplayer_send_reminders BOOLEAN,
+	blackplayerid BIGINT,
+	blackplayer_nickname VARCHAR(32), 
+	blackplayer_send_reminders BOOLEAN,
+	white_to_play BOOLEAN,
 	delay DOUBLE PRECISION
 )
 AS
@@ -157,20 +162,23 @@ $$
 BEGIN
 	RETURN QUERY SELECT 
 		g.id, 
-		w.id AS playerid, 
-		w.nickname AS player_nickname, 
-		b.id AS opponentid, 
-		b.nickname AS opponent_nickname,
+		w.id AS whiteplayerid, 
+		w.nickname AS whiteplayer_nickname, 
+		w.send_reminders AS whiteplayer_send_reminders,
+		b.id AS blackplayerid,
+		b.nickname AS blackplayer_nickname,
+		b.send_reminders AS blackplayer_send_reminders,
+		g.white_to_play,
 		EXTRACT(EPOCH FROM _now_utc - COALESCE(g.last_moved_at_utc, g.created_at_utc)) AS delay
 
 	FROM games g
 		INNER JOIN player w ON w.id = g.whiteplayer
 		INNER JOIN player b ON b.id = g.blackplayer
-	WHERE g.active = TRUE
-		AND (w.send_reminders = TRUE
-			OR
-			b.send_reminders = TRUE)
-		AND EXTRACT(EPOCH FROM _now_utc - COALESCE(g.last_moved_at_utc, g.created_at_utc)) >= 1 * 86400
+	WHERE g.active = TRUE	
+		-- AND (w.send_reminders = TRUE
+		-- 	OR
+		-- 	b.send_reminders = TRUE)
+		-- AND EXTRACT(EPOCH FROM _now_utc - COALESCE(g.last_moved_at_utc, g.created_at_utc)) >= 1 * 86400
 	;
 	-- WHERE 1=1;
 		-- AND EXTRACT(EPOCH FROM (g.last_moved_at_utc - (NOW() at time zone 'utc'))) > 0;
