@@ -3,6 +3,7 @@ if not sys.flags.debug:
 	raise Exception('Debug flag must be enabled')
 
 from collections import defaultdict
+import datetime
 import unittest
 
 import chess
@@ -45,6 +46,12 @@ nateid = 32233848429
 chadid = 83727482939
 jessid = 47463849663
 izzyid = 28394578322
+
+class NowProvider:
+	def __init__(self, static_utc_now):
+		self.static_utc_now = static_utc_now
+	def utcnow(self):
+		return self.static_utc_now
 
 class BaseTest(unittest.TestCase):
 	expected_replies = None
@@ -102,19 +109,6 @@ class BaseTest(unittest.TestCase):
 		self.assertLastBoardImageEqualsI(fen, 'w', whiteplayerid)
 		self.assertLastBoardImageEqualsI(fen, 'b', blackplayerid)
 
-		# last_white_url = sent_game_urls[whiteplayerid][target_index]
-		# self.assertEqual(last_white_url, image_url + 'w')
-
-		# last_black_url = sent_game_urls[blackplayerid][target_index]
-		# self.assertEqual(last_black_url, image_url + 'b')
-
-		# reps = sent_game_urls[recipient]
-		# if not reps:
-		# 	raise AssertionError(
-		# 		f'No game reps for {recipient}. Some for {[recipient for recipient in sent_game_urls if sent_game_urls[recipient]]}')
-		# last_rep = reps[target_index]
-		# # This only works because we're multiply inheriting from unittest.TestCase as well
-		# self.assertEqual(last_rep, rep_url)
 
 	def register_player(self, player_name, playerid=None):
 		if playerid is None:
@@ -135,7 +129,7 @@ class BaseTest(unittest.TestCase):
 
 	@classmethod
 	def setUpClass(cls):
-		cls.db = dbactions.DB()
+		cls.db = fbchessbot.db
 		cls.db.delete_all()
 
 	@classmethod
@@ -586,15 +580,6 @@ class TestGamePlay(GamePlayTest):
 		self.assertIsNotNone(time2)
 		self.assertTrue(time2 > time1)
 
-	def test_reminders(self):
-		self.perform_move(nateid, 'e4')
-		with self.db.cursor() as cur:
-			cur.execute('''
-				UPDATE player SET send_reminders = TRUE WHERE id = %s
-				''', [nateid])
-		reminders = self.db.get_reminders()
-		self.assertTrue(len(reminders) > 0)
-
 class TestUndo(GamePlayTest):
 	def test_undo(self):
 		with self.subTest('can offer'):
@@ -928,6 +913,84 @@ class TestChallengeAcceptance(BaseTest):
 
 	def test_can_challenge_with_color(self):
 		self.handle_message(nateid, 'Play against jess white', expected_replies=3)
+
+
+class RemindersTest(BaseTest):
+	def set_now(self, *, days=0, hours=0):
+		time = datetime.datetime(2018, 1, 1) + datetime.timedelta(days=days, hours=hours)
+		self.db.now_provider = NowProvider(time)
+
+	def setUp(self):
+		self.set_now()
+		self.register_all()
+		# self.handle_message(nateid, 'Reminders on')
+		with self.db.cursor() as cur:
+			# TODO build the command
+			cur.execute('''
+				update player set send_reminders = true where id = %s
+				''', [nateid])
+			cur.connection.commit()
+		self.handle_message(nateid, 'Play against Jess', expected_replies=None)
+		self.handle_message(nateid, 'New game white', expected_replies=None)
+		# try:
+		# 	self.handle_message(nateid, 'New game white', expected_replies=None)
+		# except Exception as e:
+		# 	raise Exception('wtf', e)
+
+	def test_no_reminders_without_delay(self):
+		self.set_now()
+		reminders = self.db.get_reminders()
+		self.assertEqual(len(reminders), 0)
+
+	def test_no_reminders_after_one_hour(self):
+		self.set_now(hours=1)
+		reminders = self.db.get_reminders()
+		self.assertEqual(len(reminders), 0)
+
+	def test_reminders_after_one_day(self):
+		self.set_now(days=1, hours=1)
+		reminders = self.db.get_reminders()
+		self.assertEqual(len(reminders), 1)
+
+	def test_reminders_after_five_days(self):
+		self.set_now(days=5, hours=1)
+		reminders = self.db.get_reminders()
+		self.assertEqual(len(reminders), 1)
+
+	@unittest.skip
+	def test_reminders_reset(self):
+		with self.subTest('initial'):
+			self.set_now(days=5)
+			reminders = self.db.get_reminders()
+			self.assertEqual(len(reminders), 1)
+
+		with self.subTest('reset'):
+			self.set_now(days=5, hours=1)
+			self.handle_message(nateid, 'e4')
+			reminders = self.db.get_reminders()
+			self.assertEqual(len(reminders), 0)
+
+
+
+	# def test_reminders(self):
+	# 	self.perform_move(nateid, 'e4')
+
+	# 	with self.subTest('asdf'), self.db.cursor() as cur:
+	# 		cur.execute('''
+	# 			SELECT playerid, player_nickname,
+	# 				opponentid, opponent_nickname,
+	# 				delay
+	# 			FROM cb.get_reminders()
+	# 			''')
+	# 		self.assertIsNotNone(cur.fetchone().delay)
+
+	# 	with self.db.cursor() as cur:
+	# 		cur.execute('''
+	# 			UPDATE player SET send_reminders = TRUE WHERE id = %s
+	# 			''', [nateid])
+	# 	reminders = self.db.get_reminders()
+	# 	self.assertTrue(len(reminders) > 0)
+
 
 if __name__ == '__main__':
 	unittest.main()

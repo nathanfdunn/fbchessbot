@@ -15,6 +15,88 @@ DATABASE_URL = os.environ['DATABASE_URL']
 conn = None
 cur = None
 
+def apply_all_migrations():
+	for m in migrations:
+		m()
+
+def refresh_funcs():
+	# print('refreshing!')
+	with op() as cursor, open('dbfuncs.sql') as f:
+		# Remove all existing functions
+		cursor.execute('''
+			CREATE OR REPLACE FUNCTION pg_temp.f_delfunc(_sch text)
+			  RETURNS void AS
+			$func$
+			DECLARE
+			   _sql text;
+			BEGIN
+			   SELECT INTO _sql
+			          string_agg(format('DROP FUNCTION %s(%s);'
+			                          , p.oid::regproc
+			                          , pg_get_function_identity_arguments(p.oid))
+			                   , E'\n')
+			   FROM   pg_proc      p
+			   JOIN   pg_namespace ns ON ns.oid = p.pronamespace
+			   WHERE  ns.nspname = _sch;
+
+			   IF _sql IS NOT NULL THEN
+			      --  RAISE NOTICE '%', _sql;  -- for debugging
+			      EXECUTE _sql;
+			   END IF;
+			END
+			$func$ LANGUAGE plpgsql;
+			SELECT pg_temp.f_delfunc('cb');
+			''')
+
+		cursor.execute(f.read())
+		cursor.connection.commit()
+
+def pickle_backup():
+	op()
+	cur.execute("""
+		SELECT id, description FROM outcome
+		""")
+	outcomes = list(cur)
+
+	cur.execute("""
+		SELECT id, board, active, whiteplayer, blackplayer, undo, outcome FROM games
+		""")
+	games = list(cur)
+
+	better = []
+	for game in games:
+		game = game[0], bytes(game[1]), *game[2:]
+		better.append(game)
+
+	cur.execute("""
+		SELECT id, nickname, opponent_context FROM player
+		""")
+	players = list(cur)
+
+	save = {'outcome': outcomes, 'games': better, 'players': players}
+	import pickle
+	with open('backup.pkl', 'wb') as f:
+		pickle.dump(save, f)
+
+def unpickle_backup():
+	import pickle
+	with open('backup.pkl', 'rb') as f:
+		save = pickle.load(f)
+	outcomes = save['outcome']
+	players = save['players']
+	games = save['games']
+	op()
+	cur.execute('SET CONSTRAINTS ALL DEFERRED')
+
+	cur.executemany("""
+		INSERT INTO player (id, nickname, opponent_context) VALUES (%s, %s, %s)
+		""", players)
+	cur.executemany("""
+		INSERT INTO games (id, board, active, whiteplayer, blackplayer, undo, outcome) VALUES (%s, %s, %s, %s, %s, %s, %s)
+		""", games)
+	cur.connection.commit()
+
+
 def init_connection():
 	global conn
 	if conn is None:
@@ -285,91 +367,10 @@ def migration14():
 		''')
 	cur.connection.commit()
 
-def refresh_funcs():
-	# print('refreshing!')
-	with op() as cursor, open('dbfuncs.sql') as f:
-		# Remove all existing functions
-		cursor.execute('''
-			CREATE OR REPLACE FUNCTION pg_temp.f_delfunc(_sch text)
-			  RETURNS void AS
-			$func$
-			DECLARE
-			   _sql text;
-			BEGIN
-			   SELECT INTO _sql
-			          string_agg(format('DROP FUNCTION %s(%s);'
-			                          , p.oid::regproc
-			                          , pg_get_function_identity_arguments(p.oid))
-			                   , E'\n')
-			   FROM   pg_proc      p
-			   JOIN   pg_namespace ns ON ns.oid = p.pronamespace
-			   WHERE  ns.nspname = _sch;
-
-			   IF _sql IS NOT NULL THEN
-			      --  RAISE NOTICE '%', _sql;  -- for debugging
-			      EXECUTE _sql;
-			   END IF;
-			END
-			$func$ LANGUAGE plpgsql;
-			SELECT pg_temp.f_delfunc('cb');
-			''')
-
-		cursor.execute(f.read())
-		cursor.connection.commit()
-
-# @register_migration
-# def migration11():
-# 	op()
-# 	cur.execute('''
-# 		ALTER TABLE games ADD started DATETIME, ended DATETIME
-# 		''')
-# 	cur.connection.commit()
-
-def apply_all_migrations():
-	for m in migrations:
-		m()
-
-def pickle_backup():
+@register_migration
+def migration15():
 	op()
-	cur.execute("""
-		SELECT id, description FROM outcome
-		""")
-	outcomes = list(cur)
-
-	cur.execute("""
-		SELECT id, board, active, whiteplayer, blackplayer, undo, outcome FROM games
-		""")
-	games = list(cur)
-
-	better = []
-	for game in games:
-		game = game[0], bytes(game[1]), *game[2:]
-		better.append(game)
-
-	cur.execute("""
-		SELECT id, nickname, opponent_context FROM player
-		""")
-	players = list(cur)
-
-	save = {'outcome': outcomes, 'games': better, 'players': players}
-	import pickle
-	with open('backup.pkl', 'wb') as f:
-		pickle.dump(save, f)
-
-def unpickle_backup():
-	import pickle
-	with open('backup.pkl', 'rb') as f:
-		save = pickle.load(f)
-	outcomes = save['outcome']
-	players = save['players']
-	games = save['games']
-	op()
-	cur.execute('SET CONSTRAINTS ALL DEFERRED')
-
-	cur.executemany("""
-		INSERT INTO player (id, nickname, opponent_context) VALUES (%s, %s, %s)
-		""", players)
-	cur.executemany("""
-		INSERT INTO games (id, board, active, whiteplayer, blackplayer, undo, outcome) VALUES (%s, %s, %s, %s, %s, %s, %s)
-		""", games)
+	cur.execute('''
+		ALTER TABLE games ADD COLUMN created_at_utc TIMESTAMP NOT NULL DEFAULT (NOW() at time zone 'utc')
+		''')
 	cur.connection.commit()

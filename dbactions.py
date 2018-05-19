@@ -142,6 +142,8 @@ class DB:
 			# our local postgres db (hack)
 			self.conn = psycopg2.connect(DATABASE_URL)
 		self.conn.autocommit = True
+		self.now_provider = datetime.datetime
+		# self.now_provider = None
 
 	def __del__(self):
 		self.conn.close()
@@ -174,10 +176,10 @@ class DB:
 		with self.cursor() as cur:
 			cur.execute('''
 				SELECT  cb.update_game(
-					_gameid=>%s, 
-					_boardstate=>%s, 
+					_gameid=>%s,
+					_boardstate=>%s,
 					_last_moved_at_utc=>%s);
-				''', [game.id, game.serialized(), datetime.datetime.utcnow()])
+				''', [game.id, game.serialized(), self.now_provider.utcnow()])
 			# cur.execute('''
 			# 	UPDATE games SET board = %s WHERE id = %s
 			# 	''', [game.serialized(), game.id])
@@ -200,39 +202,13 @@ class DB:
 
 	def create_new_game(self, whiteplayer, blackplayer):
 		with self.cursor() as cur:
-			# There shouldn't be any active games...but I guess it doesn't hurt?
-			cur.execute("""
-				UPDATE games SET active = FALSE WHERE 
-				(whiteplayer = %s AND blackplayer = %s)
-				OR
-				(blackplayer = %s AND whiteplayer = %s)
-				""", [whiteplayer, blackplayer, whiteplayer, blackplayer])
-
-			cur.execute("""
-				INSERT INTO games (board, active, whiteplayer, blackplayer, undo) VALUES (
-					%s, TRUE, %s, %s, FALSE
-				)
-				""", [ChessBoard().to_byte_string(), whiteplayer, blackplayer])
-			# cur.connection.commit()
+			cur.execute('''
+				SELECT cb.create_game(%s, %s, %s, %s)
+				''', [whiteplayer, blackplayer, ChessBoard().to_byte_string(), self.now_provider.utcnow()])
 
 	# Returns specified Player, opponent Player, active Game
 	def get_context(self, playerid):
 		with self.cursor() as cur:
-			# cur.execute("""
-			# 	SELECT
-			# 		p.id AS playerid, p.nickname AS player_nickname, p.opponent_context AS player_opponentid,
-			# 		o.id AS opponentid, o.nickname AS opponent_nickname, o.opponent_context AS opponent_opponentid,
-			# 		g.id AS gameid, g.board, g.active, g.whiteplayer, g.blackplayer, g.undo, g.outcome
-			# 	FROM player p
-			# 	LEFT JOIN player o ON p.opponent_context = o.id
-			# 	LEFT JOIN games g ON (
-			# 			(g.whiteplayer = p.id AND g.blackplayer = o.id) 
-			# 			OR 
-			# 			(g.blackplayer = p.id AND g.whiteplayer = o.id)
-			# 		)
-			# 		AND (g.active = TRUE)
-			# 	WHERE p.id = %s
-			# 	""", [player_id])
 			cur.execute('''
 				SELECT playerid, player_nickname, player_opponentid, player_active,
 					opponentid, opponent_nickname, opponent_opponentid, opponent_active,
@@ -438,10 +414,10 @@ class DB:
 				SELECT playerid, player_nickname,
 					opponentid, opponent_nickname,
 					delay
-				FROM cb.get_reminders()
-				''')
+				FROM cb.get_reminders(%s)
+				''', [self.now_provider.utcnow()])
 
 			for value in cur:
-				out[value.playerid].append(f"Hi {value.player_nickname}, I see you haven't made a move in your game with {value.opponent_nickname} in {value.delay} minutes")
-				out[value.opponentid].append(f"Hi {value.opponent_nickname}, I see you haven't made a move in your game with {value.player_nickname} in {value.delay} minutes")
+				# minutes = value.delay / 60
+				out[value.playerid].append(f"Hi {value.player_nickname}, I see you haven't made a move in your game with {value.opponent_nickname} in {round(value.delay / 86400, 1)} minutes")
 		return out

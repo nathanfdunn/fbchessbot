@@ -142,38 +142,77 @@ $$ LANGUAGE plpgsql;
 
 
 CREATE OR REPLACE FUNCTION cb.get_reminders(
-
+	_now_utc TIMESTAMP
 )
 RETURNS TABLE (
 	gameid INT, 
-	playerid BIGINT, 
+	playerid BIGINT,
 	player_nickname VARCHAR(32), 
 	opponentid BIGINT, 
 	opponent_nickname VARCHAR(32),
-	delay int
+	delay DOUBLE PRECISION
 )
 AS
 $$
 BEGIN
 	RETURN QUERY SELECT 
 		g.id, 
-		p.id AS playerid, 
-		p.nickname AS player_nickname, 
-		o.id AS opponentid, 
-		o.nickname AS opponent_nickname,
-		CAST(EXTRACT(MINUTE FROM (g.last_moved_at_utc - (NOW() at time zone 'utc'))) AS INT) AS delay
+		w.id AS playerid, 
+		w.nickname AS player_nickname, 
+		b.id AS opponentid, 
+		b.nickname AS opponent_nickname,
+		EXTRACT(EPOCH FROM _now_utc - COALESCE(g.last_moved_at_utc, g.created_at_utc)) AS delay
 
-	FROM player p
-	LEFT JOIN player o ON p.opponent_context = o.id
-	LEFT JOIN games g ON (
-			(g.whiteplayer = p.id AND g.blackplayer = o.id) 
-			OR 
-			(g.blackplayer = p.id AND g.whiteplayer = o.id)
-		)
-		AND (g.active = TRUE)
-	WHERE p.send_reminders = TRUE;
+	FROM games g
+		INNER JOIN player w ON w.id = g.whiteplayer
+		INNER JOIN player b ON b.id = g.blackplayer
+	WHERE g.active = TRUE
+		AND (w.send_reminders = TRUE
+			OR
+			b.send_reminders = TRUE)
+		AND EXTRACT(EPOCH FROM _now_utc - COALESCE(g.last_moved_at_utc, g.created_at_utc)) >= 1 * 86400
+	;
 	-- WHERE 1=1;
 		-- AND EXTRACT(EPOCH FROM (g.last_moved_at_utc - (NOW() at time zone 'utc'))) > 0;
 -- TODO filter out inactive players, etc.
+END
+$$ LANGUAGE plpgsql;
+
+
+CREATE OR REPLACE FUNCTION cb.create_game(
+	_whiteplayerid BIGINT,
+	_blackplayerid BIGINT,
+	_initial_board_state BYTEA,
+	_created_at_utc TIMESTAMP
+)
+RETURNS VOID
+AS
+$$
+BEGIN
+		UPDATE games 
+			SET active = FALSE 
+		WHERE active = TRUE AND (
+			(whiteplayer = _whiteplayerid AND blackplayer = _blackplayerid)
+			OR
+			(blackplayer = _whiteplayerid AND whiteplayer = _blackplayerid)
+		);
+
+		INSERT INTO games (
+			board, 
+			active, 
+			whiteplayer, 
+			blackplayer, 
+			undo, 
+			created_at_utc
+		) 
+		VALUES (
+			_initial_board_state, 
+			TRUE, 
+			_whiteplayerid, 
+			_blackplayerid, 
+			FALSE, 
+			_created_at_utc
+		);
+	-- TODO return the new game id?
 END
 $$ LANGUAGE plpgsql;
