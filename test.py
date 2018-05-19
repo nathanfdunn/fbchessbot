@@ -1043,19 +1043,15 @@ class RemindersTest(BaseTest):
 		self.handle_message(nateid, 'new game black', expected_replies=3)
 		self.set_now(days=2)
 		reminders = self.db.get_reminders()
-		# print(reminders, 'first')
 		with self.subTest('only active in white'):
 			self.assertEqual(reminders,
 				{
 					nateid: {(nateid, 'Nate', jessid, 'Jess', True, 2.0)}
 				})
 
-		# print(reminders, 'second')
 		with self.subTest('active in both'):
 			self.set_now()
 			self.handle_message(izzyid, 'e4')
-			# print('messages:',sent_messages)
-			# print('reminders:',reminders)
 			self.set_now(days=2)
 			reminders = self.db.get_reminders()
 			self.assertEqual(reminders,
@@ -1066,6 +1062,11 @@ class RemindersTest(BaseTest):
 					}
 				})
 
+			fbchessbot.send_reminders()
+			self.assertLastBoardImageEquals(nateid, 
+				f'Game with Jess inactive for 2.0 days\n' +
+				f'Game with Izzy inactive for 2.0 days'
+			)
 
 
 	# @unittest.skip

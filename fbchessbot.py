@@ -70,21 +70,29 @@ def board_imageII(fen):
 	return send_file(board_image_name)
 
 # def format_reminders(reminders):
-	
+
+def format_reminder(reminder):
+	opponent_nickname = reminder.blackplayer_nickname if reminder.white_to_play else reminder.whiteplayer_nickname
+	return f'Game with {reminder.opponent_nickname} inactive for {round(reminder.days, 1)} days'
 
 @app.route('/send_reminders', methods=['GET'])
 def send_reminders():
 	reminders = db.get_reminders()
-	fail = False
-	for recipient, messages in reminders.items():
-		for message in messages:
-			if 'rylan' in message.lower() and 'nate' in message.lower():
-				if recipient == 1331390946942076:
-					send_message(recipient, message)
-				else:
-					fail = True
-	if fail:
-		raise Exception('Still spamming people....')
+	format_reminders = {}
+	for playerid, reminders_for_player in reminders.items():
+		concatenated = '\n'.join(f'' for reminder in sorted(reminders_for_player, key=lambda r: r.days))
+		send_message(playerid, concatenated)
+
+	# fail = False
+	# for recipient, messages in reminders.items():
+	# 	for message in messages:
+	# 		if 'rylan' in message.lower() and 'nate' in message.lower():
+	# 			if recipient == 1331390946942076:
+	# 				send_message(recipient, message)
+	# 			else:
+	# 				fail = True
+	# if fail:
+	# 	raise Exception('Still spamming people....')
 
 
 @app.route('/pgn/<game_id>', methods=['GET'])

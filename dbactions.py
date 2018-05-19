@@ -31,6 +31,8 @@ Player = collections.namedtuple('Player', 'id nickname opponentid color active')
 
 BlockResult = collections.namedtuple('BlockResult', 'success sender_not_found blocked_not_found is_redundant')
 
+Reminder = collections.namedtuple('Reminder', 'whiteplayerid, whiteplayer_nickname, blackplayerid, blackplayer_nickname, white_to_play, days')
+
 class ChessBoard(chess.Board):
 	def to_byte_string(self):
 		original_fen = self.original_fen()
@@ -66,6 +68,8 @@ class ChessBoard(chess.Board):
 		while board.move_stack:
 			board.pop()
 		return board.fen()
+
+
 
 class Game:
 	def __init__(self, id, raw_board, active, whiteplayer, blackplayer, undo, outcome, last_moved_at_utc):
@@ -435,9 +439,10 @@ class DB:
 				if value.delay < delay_threshold:
 					continue
 
-				days = round(value.delay / 86400, 1)
+				# days = round(value.delay / 86400, 1)
+				days = value.delay / 86400
 				if value.whiteplayer_send_reminders and value.white_to_play:
-					out[value.whiteplayerid].add((
+					out[value.whiteplayerid].add(Reminder(
 						value.whiteplayerid,
 						value.whiteplayer_nickname,
 						value.blackplayerid,
@@ -446,7 +451,7 @@ class DB:
 						days
 						))
 				if value.blackplayer_send_reminders and not value.white_to_play:
-					out[value.blackplayerid].add((
+					out[value.blackplayerid].add(Reminder(
 						value.blackplayerid,
 						value.blackplayer_nickname,
 						value.whiteplayerid,
