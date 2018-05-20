@@ -1015,7 +1015,7 @@ class RemindersTest(BaseTest):
 			self.set_now(days=1, hours=12)
 			reminders = self.db.get_reminders()
 			self.assertEqual(reminders, {
-				nateid: {(nateid, 'Nate', jessid, 'Jess', False, 1.5)}
+				nateid: {(jessid, 'Jess', nateid, 'Nate', False, 1.5)}
 				})
 
 
@@ -1023,19 +1023,21 @@ class RemindersTest(BaseTest):
 		self.set_now(days=2)
 		self.handle_message(jessid, 'reminders on')
 		reminders = self.db.get_reminders()
-		self.assertEqual(reminders,
-			{
-				nateid: {(nateid, 'Nate', jessid, 'Jess', True, 2)},
-			})
+		with self.subTest('Nate to play'):
+			self.assertEqual(reminders,
+				{
+					nateid: {(nateid, 'Nate', jessid, 'Jess', True, 2.0)},
+				})
 
 		self.set_now()
 		self.handle_message(nateid, 'e4')
 		self.set_now(days=2)
 		reminders = self.db.get_reminders()
-		self.assertEqual(reminders,
-			{
-				jessid: {(jessid, 'Jess', nateid, 'Nate', False, 2)}
-			})
+		with self.subTest('Jess to play'):
+			self.assertEqual(reminders,
+				{
+					jessid: {(nateid, 'Nate', jessid, 'Jess', False, 2.0)},
+				})
 
 	def test_multiple_games(self):
 		self.set_now()
@@ -1058,14 +1060,14 @@ class RemindersTest(BaseTest):
 				{
 					nateid: {
 						(nateid, 'Nate', jessid, 'Jess', True, 2.0),
-						(nateid, 'Nate', izzyid, 'Izzy', False, 2.0)
+						(izzyid, 'Izzy', nateid, 'Nate', False, 2.0)
 					}
 				})
 
 			fbchessbot.send_reminders()
-			self.assertLastBoardImageEquals(nateid, 
-				f'Game with Jess inactive for 2.0 days\n' +
-				f'Game with Izzy inactive for 2.0 days'
+			self.assertLastMessageEquals(nateid, 
+				f'Game with Izzy inactive for 2.0 days\n' +
+				f'Game with Jess inactive for 2.0 days'
 			)
 
 
@@ -1104,7 +1106,7 @@ class RemindersTest(BaseTest):
 
 			reminders = self.db.get_reminders()
 			self.assertEqual(reminders, {
-				jessid: {(jessid, 'Jess', nateid, 'Nate', False, 5)}
+				jessid: {(nateid, 'Nate', jessid, 'Jess', False, 5)}
 				})
 
 		with self.subTest('Jess opting out'):

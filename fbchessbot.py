@@ -72,15 +72,25 @@ def board_imageII(fen):
 # def format_reminders(reminders):
 
 def format_reminder(reminder):
-	opponent_nickname = reminder.blackplayer_nickname if reminder.white_to_play else reminder.whiteplayer_nickname
-	return f'Game with {reminder.opponent_nickname} inactive for {round(reminder.days, 1)} days'
+	if reminder.white_to_play:
+		opponent_nickname = reminder.blackplayer_nickname
+	else:
+		opponent_nickname = reminder.whiteplayer_nickname
+	return f'Game with {opponent_nickname} inactive for {round(reminder.days, 1)} days'
+
+def reminder_sort_key(reminder):
+	if reminder.white_to_play:
+		opponent_nickname = reminder.blackplayer_nickname
+	else:
+		opponent_nickname = reminder.whiteplayer_nickname
+	return reminder.days, opponent_nickname
 
 @app.route('/send_reminders', methods=['GET'])
 def send_reminders():
 	reminders = db.get_reminders()
 	format_reminders = {}
 	for playerid, reminders_for_player in reminders.items():
-		concatenated = '\n'.join(f'' for reminder in sorted(reminders_for_player, key=lambda r: r.days))
+		concatenated = '\n'.join(format_reminder(reminder) for reminder in sorted(reminders_for_player, key=reminder_sort_key))
 		send_message(playerid, concatenated)
 
 	# fail = False

@@ -432,7 +432,7 @@ class DB:
 					blackplayerid, blackplayer_nickname, blackplayer_send_reminders,
 					white_to_play,
 					delay
-				FROM cb.get_statuses(%s)
+				FROM cb.search_games(%s)
 				''', [self.now_provider.utcnow()])
 
 			for value in cur:
@@ -452,12 +452,11 @@ class DB:
 						))
 				if value.blackplayer_send_reminders and not value.white_to_play:
 					out[value.blackplayerid].add(Reminder(
-						value.blackplayerid,
-						value.blackplayer_nickname,
 						value.whiteplayerid,
 						value.whiteplayer_nickname,
+						value.blackplayerid,
+						value.blackplayer_nickname,
 						value.white_to_play,
 						days
 						))
-
 		return dict(out.items())

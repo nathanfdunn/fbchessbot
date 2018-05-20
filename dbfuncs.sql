@@ -143,8 +143,11 @@ END
 $$ LANGUAGE plpgsql;
 
 
-CREATE OR REPLACE FUNCTION cb.get_statuses(
+CREATE OR REPLACE FUNCTION cb.search_games(
 	_now_utc TIMESTAMP
+	, _playerid BIGINT = NULL
+	, _active BOOLEAN = NULL
+	, _time_since_activity INT = NULL
 )
 RETURNS TABLE (
 	gameid INT, 
@@ -174,7 +177,12 @@ BEGIN
 	FROM games g
 		INNER JOIN player w ON w.id = g.whiteplayer
 		INNER JOIN player b ON b.id = g.blackplayer
-	WHERE g.active = TRUE	
+	WHERE 	(_active IS NULL OR g.active = _active)
+		AND (_playerid IS NULL OR w.id = _playerid OR b.id = _playerid)
+		AND (_time_since_activity IS NULL OR 
+				EXTRACT(EPOCH FROM _now_utc - COALESCE(g.last_moved_at_utc, g.created_at_utc)) > _time_since_activity
+			)
+
 		-- AND (w.send_reminders = TRUE
 		-- 	OR
 		-- 	b.send_reminders = TRUE)
