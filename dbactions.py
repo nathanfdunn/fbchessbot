@@ -420,7 +420,7 @@ class DB:
 	# def format_reminder(self, player_nickname, opponent_nickname, days):
 	# 	return f"Hi {player_nickname}, I see you haven't made a move in your game with {opponent_nickname} in {days} days"
 
-	delay_threshold = 86400*2
+	delay_threshold = 86400/2#86400*2
 	# Returns a Dict[int, Set[Tuple[int, str, int, str, double]]]
 	def get_reminders(self, delay_threshold=None):
 		if delay_threshold is None:
