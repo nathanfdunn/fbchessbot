@@ -145,6 +145,7 @@ $$ LANGUAGE plpgsql;
 
 CREATE OR REPLACE FUNCTION cb.search_games(
 	_now_utc TIMESTAMP
+	, _gameid INT = NULL
 	, _playerid BIGINT = NULL
 	, _active BOOLEAN = NULL
 	, _time_since_activity INT = NULL
@@ -158,7 +159,8 @@ RETURNS TABLE (
 	blackplayer_nickname VARCHAR(32), 
 	blackplayer_send_reminders BOOLEAN,
 	white_to_play BOOLEAN,
-	delay DOUBLE PRECISION
+	delay DOUBLE PRECISION,
+	board BYTEA
 )
 AS
 $$
@@ -172,12 +174,14 @@ BEGIN
 		b.nickname AS blackplayer_nickname,
 		b.send_reminders AS blackplayer_send_reminders,
 		g.white_to_play,
-		EXTRACT(EPOCH FROM _now_utc - COALESCE(g.last_moved_at_utc, g.created_at_utc)) AS delay
+		EXTRACT(EPOCH FROM _now_utc - COALESCE(g.last_moved_at_utc, g.created_at_utc)) AS delay,
+		g.board
 
 	FROM games g
 		INNER JOIN player w ON w.id = g.whiteplayer
 		INNER JOIN player b ON b.id = g.blackplayer
-	WHERE 	(_active IS NULL OR g.active = _active)
+	WHERE 	(_gameid IS NULL OR g.id = _gameid)
+		AND (_active IS NULL OR g.active = _active)
 		AND (_playerid IS NULL OR w.id = _playerid OR b.id = _playerid)
 		AND (_time_since_activity IS NULL OR 
 				EXTRACT(EPOCH FROM _now_utc - COALESCE(g.last_moved_at_utc, g.created_at_utc)) > _time_since_activity
@@ -232,3 +236,48 @@ BEGIN
 	-- TODO return the new game id?
 END
 $$ LANGUAGE plpgsql;
+
+
+-- CREATE OR REPLACE FUNCTION cb.select_game(
+-- 	_gameid INT
+-- )
+-- RETURNS TABLE (
+-- 	gameid INT, 
+-- 	whiteplayerid BIGINT,
+-- 	whiteplayer_nickname VARCHAR(32), 
+-- 	whiteplayer_send_reminders BOOLEAN,
+-- 	blackplayerid BIGINT,
+-- 	blackplayer_nickname VARCHAR(32), 
+-- 	blackplayer_send_reminders BOOLEAN,
+-- 	white_to_play BOOLEAN,
+-- 	delay DOUBLE PRECISION
+-- )
+-- AS
+-- $$
+-- BEGIN
+-- 	RETURN QUERY SELECT 
+-- 		g.id, 
+-- 		w.id AS whiteplayerid, 
+-- 		w.nickname AS whiteplayer_nickname, 
+-- 		w.send_reminders AS whiteplayer_send_reminders,
+-- 		b.id AS blackplayerid,
+-- 		b.nickname AS blackplayer_nickname,
+-- 		b.send_reminders AS blackplayer_send_reminders,
+-- 		g.white_to_play,
+-- 		EXTRACT(EPOCH FROM _now_utc - COALESCE(g.last_moved_at_utc, g.created_at_utc)) AS delay
+
+-- 	FROM games g
+-- 		INNER JOIN player w ON w.id = g.whiteplayer
+-- 		INNER JOIN player b ON b.id = g.blackplayer
+-- 	WHERE g.id = _gameid
+
+-- 		-- AND (w.send_reminders = TRUE
+-- 		-- 	OR
+-- 		-- 	b.send_reminders = TRUE)
+-- 		-- AND EXTRACT(EPOCH FROM _now_utc - COALESCE(g.last_moved_at_utc, g.created_at_utc)) >= 1 * 86400
+-- 	;
+-- 	-- WHERE 1=1;
+-- 		-- AND EXTRACT(EPOCH FROM (g.last_moved_at_utc - (NOW() at time zone 'utc'))) > 0;
+-- -- TODO filter out inactive players, etc.
+-- END
+-- $$ LANGUAGE plpgsql;

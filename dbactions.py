@@ -33,6 +33,8 @@ BlockResult = collections.namedtuple('BlockResult', 'success sender_not_found bl
 
 Reminder = collections.namedtuple('Reminder', 'whiteplayerid, whiteplayer_nickname, blackplayerid, blackplayer_nickname, white_to_play, days')
 
+GameSummary = Reminder
+
 class ChessBoard(chess.Board):
 	def to_byte_string(self):
 		original_fen = self.original_fen()
@@ -69,6 +71,38 @@ class ChessBoard(chess.Board):
 			board.pop()
 		return board.fen()
 
+	def image_url(self, perspective=True):
+		fen = self.fen().split()[0].replace('/','-')
+		query_arg = 'w' if perspective else 'b'
+
+		return (f'https://fbchessbot.herokuapp.com/board/{fen}'
+				f'?perspective={query_arg}')
+
+	def get_img_urls(self):
+		out = []
+		while self.move_stack:
+			self.pop()
+			out.append(self.image_url())
+		return out
+
+		# BLACK = False
+		# fen = self.board.fen().split()[0]
+
+		# if perspective == BLACK:
+		# 	fen = fen[::-1]
+
+		# fen = fen.replace('/', '-')
+		# return f'https://fbchessbot.herokuapp.com/image/{fen}'
+
+	# def fen_history(self):
+	# 	board = self.copy()
+	# 	out = []
+	# 	out.append(board.fen())
+	# 	while board.move_stack:
+	# 		board.pop()
+	# 		out.append(board.fen())
+		
+	# 	return list(reversed(out))
 
 
 class Game:
@@ -83,6 +117,10 @@ class Game:
 		self.outcome = outcome
 		self.last_moved_at_utc = last_moved_at_utc
 
+	# @classmethod
+	# def fromboard(cls, board):
+	# 	return cls(None, )
+
 	def display(self):
 		print(self.board)
 
@@ -90,22 +128,33 @@ class Game:
 	def serialized(self):
 		return self.board.to_byte_string()
 
+	# def fen_history(self):
+	# 	board = self.copy()
+	# 	out = []
+	# 	out.append(board.fen())
+	# 	while board.move_stack:
+	# 		board.pop()
+	# 		out.append(board.fen())
+		
+	# 	return list(reversed(out))
+
 	def image_url(self, perspective=True):
-		fen = self.board.fen().split()[0].replace('/','-')
-		query_arg = 'w' if perspective else 'b'
+		return self.board.image_url(perspective)
+		# fen = self.board.fen().split()[0].replace('/','-')
+		# query_arg = 'w' if perspective else 'b'
 
-		return (f'https://fbchessbot.herokuapp.com/board/{fen}'
-				f'?perspective={query_arg}')
+		# return (f'https://fbchessbot.herokuapp.com/board/{fen}'
+		# 		f'?perspective={query_arg}')
 
 
-		BLACK = False
-		fen = self.board.fen().split()[0]
+		# BLACK = False
+		# fen = self.board.fen().split()[0]
 
-		if perspective == BLACK:
-			fen = fen[::-1]
+		# if perspective == BLACK:
+		# 	fen = fen[::-1]
 
-		fen = fen.replace('/', '-')
-		return f'https://fbchessbot.herokuapp.com/image/{fen}'
+		# fen = fen.replace('/', '-')
+		# return f'https://fbchessbot.herokuapp.com/image/{fen}'
 
 	def pgn_url(self):
 		return f'https://fbchessbot.herokuapp.com/pgn/{self.id}.pgn'
@@ -211,6 +260,7 @@ class DB:
 				SELECT cb.create_game(%s, %s, %s, %s)
 				''', [whiteplayer, blackplayer, ChessBoard().to_byte_string(), self.now_provider.utcnow()])
 
+	# TODO wrap this into a form of search_games...?
 	# Returns specified Player, opponent Player, active Game
 	def get_context(self, playerid):
 		with self.cursor() as cur:
@@ -419,6 +469,34 @@ class DB:
 
 	# def format_reminder(self, player_nickname, opponent_nickname, days):
 	# 	return f"Hi {player_nickname}, I see you haven't made a move in your game with {opponent_nickname} in {days} days"
+
+	# def get_game(gameid):
+	# 	games = self.search_games(gameid=gameid)
+	# 	if games:
+	# 		return games[0]
+	# 	return None
+
+	# def search_games(self, *, gameid=None, now_utc=None, playerid=None, active=None, time_since_activity=None):
+	# 	if now_utc is None:
+	# 		now_utc = self.now_provider.utcnow()
+	# 	with self.cursor() as cur:
+	# 		cur.execute('''
+	# 			SELECT whiteplayerid, whiteplayer_nickname, whiteplayer_send_reminders,
+	# 				blackplayerid, blackplayer_nickname, blackplayer_send_reminders,
+	# 				white_to_play,
+	# 				delay,
+	# 				board
+	# 			FROM cb.search_games(_now_utc=>%s, _gameid=>%s, _playerid=>%s, _active=>%s, _time_since_activity=>%s)
+	# 			''', [now_utc, playerid, active, time_since_activity])
+
+	# 		out = []
+	# 		for row in cur:
+	# 			whiteplayer = Player(row.whiteplayerid, row.whiteplayer_nickname, None, constants.WHITE, None)
+	# 			blackplayer = Player(row.blackplayerid, row.blackplayer_nickname, None, constants.BLACK, None)
+	# 			game = Game(row.gameid, bytes(row.board), None, whiteplayer, blackplayer, None, None, None)
+
+	# 		return game
+
 
 	delay_threshold = 86400/2#86400*2
 	# Returns a Dict[int, Set[Tuple[int, str, int, str, double]]]

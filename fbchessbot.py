@@ -7,7 +7,7 @@ import sys
 
 import chess
 import chess.pgn
-from flask import Flask, request, send_file, escape as flask_encode_html
+from flask import Flask, request, send_file, render_template, escape as flask_encode_html
 from PIL import Image, ImageDraw
 import requests
 
@@ -118,6 +118,19 @@ def board_pgn(game_id):
 @app.route('/', methods=['GET'])
 def hello():
 	return '<h1>Hello</h1>'
+
+@app.route('/explore/<game_id>', methods=['GET'])
+def explore(game_id):
+	board = db.board_from_id(game_id)
+	imgurls = board.get_img_urls()
+	# states = []
+	# for ply, fen in enumerate(board.fen_history()):
+	# 	imgurl = 'https://fbchessbot.herokuapp.com/'
+	# imgurls
+
+	return render_template('explore.html',
+		imgurls=imgurls
+		)
 
 
 @app.route('/webhook', methods=['GET'])
@@ -718,4 +731,4 @@ if sys.flags.debug:
 
 
 if __name__ == '__main__':
-	app.run(host='0.0.0.0')
+	app.run(host='0.0.0.0', debug=True)
