@@ -2,23 +2,52 @@
 <html>
 <head>
 	<title>Explore</title>
-<!-- 	<script type="text/javascript" src="/scripts/chessboardjs-0.3.0/js/chessboard-0.3.0.js"></script>
+	<!-- <script type="text/javascript" src="/scripts/chessboardjs-0.3.0/js/chessboard-0.3.0.js"></script> -->
+	<script
+  src="https://code.jquery.com/jquery-3.3.1.js"
+  integrity="sha256-2Kok7MbOyxpgUVvAk/HJ2jigOSYS2auK4Pfzbm7uH60="
+  crossorigin="anonymous"></script>
 	<script type="text/javascript">
-		document.ready = (function(){
-			var board = ChessBoard('chessboard0');
+		// document.ready = (function(){
+		// 	var board = ChessBoard('chessboard0');
 
-		});
+		// });
+		var numFrames = {{imgurls|length}};
+		var index = numFrames - 1;				// Start from the end
+		$(function(){
+			$('.ply-frame').hide();
+			$('#ply-' + index).show();
+		})
+		function prev(){
+			index--;
+			refreshFrame();
+		}
+		function next(){
+			index++;
+			refreshFrame();
+		}
+		function refreshFrame(){
+			$('.ply-frame').hide();
+			var plyFrame = $('#ply-' + index);
+			plyFrame.show();
+			$('#selectedFen').val(plyFrame.attr('data-fen'));
+		}
+	</script>
 
-	</script> -->
 </head>
 <body>
-	<!-- <div id="chessboard0"></div> -->
 	<div>
-		{% for imgurl in imgurls %}
-		<img id="{{loop.index0}}" src="{{imgurl}}">
+		{% for obj in imgurls %}
+			<img id="ply-{{loop.index0}}" class="ply-frame" src="{{obj.url}}" data-fen="{{obj.fen}}">
 		{% endfor %}
 	</div>
-
-
+<button onclick="prev()">&lt;</button>
+<button onclick="next()">&gt;</button>
+	<form action="/explore/0" method="post">
+		<input type="hidden" name="whiteplayerid" value="{{whiteplayerid}}">
+		<input type="hidden" name="blackplayerid" value="{{blackplayerid}}">
+		<input type="hidden" name="fen" id="selectedFen">
+		<input type="submit">
+	</form>
 </body>
 </html>

@@ -82,8 +82,13 @@ class ChessBoard(chess.Board):
 		out = []
 		while self.move_stack:
 			self.pop()
-			out.append(self.image_url())
-		return out
+			out.append({
+				"url": self.image_url(),
+				"fen": self.fen()
+				})
+			# out.append(self.image_url())
+
+		return list(reversed(out))
 
 		# BLACK = False
 		# fen = self.board.fen().split()[0]
@@ -254,11 +259,19 @@ class DB:
 				''', [int(outcome), game.id])
 			# cur.connection.commit()
 
-	def create_new_game(self, whiteplayer, blackplayer):
+	def create_new_game(self, whiteplayer, blackplayer, startingfen=None):
 		with self.cursor() as cur:
+			if startingfen is None:
+				board = ChessBoard()
+			else:
+				board = ChessBoard(startingfen)
+
+			boardbytes = board.to_byte_string()
+			white_to_play = board.turn
+
 			cur.execute('''
-				SELECT cb.create_game(%s, %s, %s, %s)
-				''', [whiteplayer, blackplayer, ChessBoard().to_byte_string(), self.now_provider.utcnow()])
+				SELECT cb.create_game(%s, %s, %s, %s, %s)
+				''', [whiteplayer, blackplayer, boardbytes, self.now_provider.utcnow(), white_to_play])
 
 	# TODO wrap this into a form of search_games...?
 	# Returns specified Player, opponent Player, active Game

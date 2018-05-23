@@ -119,18 +119,30 @@ def board_pgn(game_id):
 def hello():
 	return '<h1>Hello</h1>'
 
-@app.route('/explore/<game_id>', methods=['GET'])
+@app.route('/explore/<game_id>', methods=['GET', 'POST'])
 def explore(game_id):
-	board = db.board_from_id(game_id)
-	imgurls = board.get_img_urls()
-	# states = []
-	# for ply, fen in enumerate(board.fen_history()):
-	# 	imgurl = 'https://fbchessbot.herokuapp.com/'
-	# imgurls
+	if request.method == 'POST':
+		whiteplayerid = request.values.get('whiteplayerid')
+		blackplayerid = request.values.get('blackplayerid') # Your form's
+		fen = request.values.get('fen')
 
-	return render_template('explore.html',
-		imgurls=imgurls
-		)
+		db.create_new_game(whiteplayerid, blackplayerid, fen)
+
+		return 'Success!'
+
+	else:
+		board = db.board_from_id(game_id)
+		imgurls = board.get_img_urls()
+		# states = []
+		# for ply, fen in enumerate(board.fen_history()):
+		# 	imgurl = 'https://fbchessbot.herokuapp.com/'
+		# imgurls
+
+		return render_template('explore.html',
+			imgurls=imgurls,
+			whiteplayerid=1498820443505655,
+			blackplayerid=1331390946942076
+			)
 
 
 @app.route('/webhook', methods=['GET'])

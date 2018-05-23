@@ -203,7 +203,8 @@ CREATE OR REPLACE FUNCTION cb.create_game(
 	_whiteplayerid BIGINT,
 	_blackplayerid BIGINT,
 	_initial_board_state BYTEA,
-	_created_at_utc TIMESTAMP
+	_created_at_utc TIMESTAMP,
+	_white_to_play BOOLEAN
 )
 RETURNS VOID
 AS
@@ -223,7 +224,8 @@ BEGIN
 			whiteplayer, 
 			blackplayer, 
 			undo, 
-			created_at_utc
+			created_at_utc,
+			white_to_play
 		) 
 		VALUES (
 			_initial_board_state, 
@@ -231,7 +233,8 @@ BEGIN
 			_whiteplayerid, 
 			_blackplayerid, 
 			FALSE, 
-			_created_at_utc
+			_created_at_utc,
+			_white_to_play
 		);
 	-- TODO return the new game id?
 END
