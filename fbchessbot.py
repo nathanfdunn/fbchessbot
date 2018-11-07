@@ -381,16 +381,7 @@ def play_against(sender, other):
 		return
 
 
-@command(receive_args=True)
-def new_960(color, sender):
-	if color.lower() not in ['black', 'white']:
-		send_message(sender, "Try either 'new 960 white' or 'new 960 black'")
-		return
-	new_game(color, sender, True)
-
-
-@command(receive_args=True)
-def new_game(color, sender, is_960=False):
+def new_game_base(color, sender, is_960=False):
 	if color.lower() not in ['black', 'white']:
 		send_message(sender, "Try either 'new game white' or 'new game black'")
 		return
@@ -421,6 +412,18 @@ def new_game(color, sender, is_960=False):
 	send_message(opponent.id, f'{nickname} started a new game')
 	_, _, g = db.get_context(sender)
 	show_game_to_both(g)
+
+@command(receive_args=True)
+def new_960(color, sender):
+	if color.lower() not in ['black', 'white']:
+		send_message(sender, "Try either 'new 960 white' or 'new 960 black'")
+		return
+	new_game_base(color, sender, True)
+
+
+@command(receive_args=True)
+def new_game(color, sender):
+	new_game_base(color, sender)
 
 
 @command
