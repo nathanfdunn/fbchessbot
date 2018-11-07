@@ -405,7 +405,7 @@ def new_game_base(color, sender, is_960=False):
 	if is_960:
 		board = chess.Board(chess960=is_960)
 		board.set_chess960_pos(random.randint(0, 959))
-		db.create_new_game(whiteplayer, blackplayerid, board.fen())
+		db.create_new_game(whiteplayer, blackplayer, board.fen())
 	else:
 		db.create_new_game(whiteplayer, blackplayer)
 
