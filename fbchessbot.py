@@ -2,6 +2,7 @@ import functools
 import json
 import inspect
 import os
+import random
 import re
 import sys
 
@@ -381,7 +382,15 @@ def play_against(sender, other):
 
 
 @command(receive_args=True)
-def new_game(color, sender):
+def new_960(color, sender):
+	if color.lower() not in ['black', 'white']:
+		send_message(sender, "Try either 'new 960 white' or 'new 960 black'")
+		return
+	new_game(color, sender, True)
+
+
+@command(receive_args=True)
+def new_game(color, sender, is_960=False):
 	if color.lower() not in ['black', 'white']:
 		send_message(sender, "Try either 'new game white' or 'new game black'")
 		return
@@ -400,7 +409,15 @@ def new_game(color, sender):
 	else:
 		whiteplayer, blackplayer = opponent.id, sender
 	nickname = db.nickname_from_id(sender)
-	db.create_new_game(whiteplayer, blackplayer)
+	
+
+	if is_960:
+		board = chess.Board(chess960=is_960)
+		board.set_chess960_pos(random.randint(0, 959))
+		db.create_new_game(whiteplayer, blackplayerid, board.fen())
+	else:
+		db.create_new_game(whiteplayer, blackplayer)
+
 	send_message(opponent.id, f'{nickname} started a new game')
 	_, _, g = db.get_context(sender)
 	show_game_to_both(g)
