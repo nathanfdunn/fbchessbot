@@ -119,8 +119,13 @@ def board_pgn(game_id):
 def hello():
 	return '<h1>Hello</h1>'
 
+@app.route('/explore', methods=['GET'], defaults={'game_id': None})
 @app.route('/explore/<game_id>', methods=['GET', 'POST'])
 def explore(game_id):
+	if game_id is None:
+		gameids = [rec.gameid for rec in db.get_recent_games()]
+		return render_template('explore-index.html', gameids=gameids)
+
 	if request.method == 'POST':
 		whiteplayerid = request.values.get('whiteplayerid')
 		blackplayerid = request.values.get('blackplayerid') # Your form's
@@ -133,10 +138,6 @@ def explore(game_id):
 	else:
 		board = db.board_from_id(game_id)
 		imgurls = board.get_img_urls()
-		# states = []
-		# for ply, fen in enumerate(board.fen_history()):
-		# 	imgurl = 'https://fbchessbot.herokuapp.com/'
-		# imgurls
 
 		return render_template('explore.html',
 			imgurls=imgurls,
@@ -144,6 +145,9 @@ def explore(game_id):
 			blackplayerid=1331390946942076
 			)
 
+@app.route('/coordinate-trainer')
+def coordinate_trainer():
+	return render_template('chess-coordinate-trainer.html')
 
 @app.route('/webhook', methods=['GET'])
 def verify():

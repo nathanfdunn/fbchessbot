@@ -551,3 +551,16 @@ class DB:
 						days
 						))
 		return dict(out.items())
+
+	def get_recent_games(self, count=100):
+		with self.cursor() as cur:
+			cur.execute('''
+				SELECT gameid
+					-- whiteplayerid, whiteplayer_nickname, whiteplayer_send_reminders,
+					-- blackplayerid, blackplayer_nickname, blackplayer_send_reminders,
+					-- white_to_play,
+					-- delay
+				FROM cb.search_games(%s)
+				''', [self.now_provider.utcnow()])#, count])
+
+			return list(cur)

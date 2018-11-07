@@ -149,6 +149,7 @@ CREATE OR REPLACE FUNCTION cb.search_games(
 	, _playerid BIGINT = NULL
 	, _active BOOLEAN = NULL
 	, _time_since_activity INT = NULL
+	, _count INT = NULL
 )
 RETURNS TABLE (
 	gameid INT, 
@@ -166,7 +167,7 @@ AS
 $$
 BEGIN
 	RETURN QUERY SELECT 
-		g.id, 
+		g.id + 1000, 
 		w.id AS whiteplayerid, 
 		w.nickname AS whiteplayer_nickname, 
 		w.send_reminders AS whiteplayer_send_reminders,
@@ -186,7 +187,8 @@ BEGIN
 		AND (_time_since_activity IS NULL OR 
 				EXTRACT(EPOCH FROM _now_utc - COALESCE(g.last_moved_at_utc, g.created_at_utc)) > _time_since_activity
 			)
-
+	ORDER BY g.id
+	LIMIT _count
 		-- AND (w.send_reminders = TRUE
 		-- 	OR
 		-- 	b.send_reminders = TRUE)

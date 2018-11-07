@@ -1,0 +1,1129 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<style type="text/css">
+
+#indicator.correct {
+	background: green;
+	transition: 0.1s;
+}
+
+#indicator.incorrect {
+	background: red;
+	transition: 0.1s;
+}
+
+#indicator {
+	width: 200px;
+	height: 50px;
+	text-align: center;
+	transition: 0.2s;
+}
+
+.board[data-hide-board="true"] {
+	display: none;
+}
+
+.axis[data-hide-axis="true"] {
+	visibility: hidden;
+}
+
+#target-coord {
+	font-size: 250%;
+}
+
+.board {
+	border-collapse: collapse;
+}
+
+.square {
+	width: 7vh;
+	height: 7vh;
+}
+
+.square.black {
+	background: #555;
+}
+
+.square.black[highlighted="true"] {
+	background: #770;
+}
+
+.square.white {
+	background: #ccc;
+}
+
+.square.white[highlighted="true"] {
+	background: #dd6;
+}
+
+.piece[data-hide-piece="true"] {
+	display: none;
+}
+
+.piece {
+	padding-left: 0.9vh;
+	font-size: 5vh;
+	font-weight: 900;
+}
+
+.piece-outline {
+	position: absolute;
+	z-index: 100;
+	font-weight: 100;
+}
+
+.piece.white {
+	color: white;
+}
+
+.piece.white .piece-outline {
+	color: black;
+}
+
+.piece.black {
+	color: black;
+}
+
+.piece.black .piece-outline {
+	color: white;
+}
+
+#coord-input {
+	outline: 1px solid black;
+}
+
+#coord-input:focus {
+	outline: 2px solid #55f;
+}
+
+#input-group[data-hide-input="true"] {
+	display: none;
+}
+
+#click-mode-group[data-hide-input="true"] {
+	display: none;
+}
+
+.axis_righ, .axis_top {
+	visibility: hidden;
+}
+
+	</style>
+	<title></title>
+</head>
+<body>
+	<div id="config-panel">
+		<div id="mode">
+			<input type="radio" checked="checked" name="mode" id="mode-type">
+			<label for="mode-type">Type coordinates of highlighted</label>
+
+			<input type="radio" name="mode" id="mode-click">
+			<label for="mode-click">Click square with coordinates</label>
+		</div>
+		<div>
+			<input type="checkbox" name="failure" id="failure">
+			<label for="failure">New problem on failure</label>
+		</div>
+
+		<div>
+			<input type="checkbox" id="show-labels" name="show-labels">
+			<label for="show-labels">Show labels</label>
+		</div>
+
+		<div>
+			<input type="checkbox" id="show-pieces" name="show-pieces" checked="checked">
+			<label for="show-pieces">Show pieces</label>
+		</div>
+
+		<div>
+			<input type="radio" id="player-white" name="player-color" checked="checked">
+			<label for="player-white">White's perspective</label>
+			
+			<input type="radio" id="player-black" name="player-color">
+			<label for="player-black">Black's perspective</label>
+		
+		</div>
+	</div>
+
+	<div id="indicator"></div>
+
+	<div id="click-mode-group" data-hide-input="true">
+		Click on square
+		<div id="target-coord">B5</div>
+	</div>
+	
+	<div id="input-group">
+		<label for="coord-input">Enter coordinate of highlighted square:</label>
+		<br>
+		<input type="text" name="coordinate" id="coord-input">
+	</div>
+
+<table class="board" id="W_board">
+	<tr>
+		<th></th>
+		<th class="file axis axis_top" data-hide-axis="true">A</th>
+		<th class="file axis axis_top" data-hide-axis="true">B</th>
+		<th class="file axis axis_top" data-hide-axis="true">C</th>
+		<th class="file axis axis_top" data-hide-axis="true">D</th>
+		<th class="file axis axis_top" data-hide-axis="true">E</th>
+		<th class="file axis axis_top" data-hide-axis="true">F</th>
+		<th class="file axis axis_top" data-hide-axis="true">G</th>
+		<th class="file axis axis_top" data-hide-axis="true">H</th>
+		<th></th>
+	</tr>
+	<tr>
+		<th class="rank axis axis_left" data-hide-axis="true">8</th>
+		<td class="square white" id=W_A8>
+	<div class="piece black">
+		<div class="piece-outline">
+			&#9814;
+		</div>
+		<div class="piece-content">
+			&#9820;
+		<div>
+	</div>
+	</td>
+		<td class="square black" id=W_B8>
+	<div class="piece black">
+		<div class="piece-outline">
+			&#9816;
+		</div>
+		<div class="piece-content">
+			&#9822;
+		<div>
+	</div>
+	</td>
+		<td class="square white" id=W_C8>
+	<div class="piece black">
+		<div class="piece-outline">
+			&#9815;
+		</div>
+		<div class="piece-content">
+			&#9821;
+		<div>
+	</div>
+	</td>
+		<td class="square black" id=W_D8>
+	<div class="piece black">
+		<div class="piece-outline">
+			&#9813;
+		</div>
+		<div class="piece-content">
+			&#9819;
+		<div>
+	</div>
+	</td>
+		<td class="square white" id=W_E8>
+	<div class="piece black">
+		<div class="piece-outline">
+			&#9812;
+		</div>
+		<div class="piece-content">
+			&#9818;
+		<div>
+	</div>
+	</td>
+		<td class="square black" id=W_F8>
+	<div class="piece black">
+		<div class="piece-outline">
+			&#9815;
+		</div>
+		<div class="piece-content">
+			&#9821;
+		<div>
+	</div>
+	</td>
+		<td class="square white" id=W_G8>
+	<div class="piece black">
+		<div class="piece-outline">
+			&#9816;
+		</div>
+		<div class="piece-content">
+			&#9822;
+		<div>
+	</div>
+	</td>
+		<td class="square black" id=W_H8>
+	<div class="piece black">
+		<div class="piece-outline">
+			&#9814;
+		</div>
+		<div class="piece-content">
+			&#9820;
+		<div>
+	</div>
+	</td>
+		<th class="rank axis axis_righ" data-hide-axis="true">8</th>
+	</tr>
+	<tr>
+		<th class="rank axis axis_left" data-hide-axis="true">7</th>
+		<td class="square black" id=W_A7>
+	<div class="piece black">
+		<div class="piece-outline">
+			&#9817;
+		</div>
+		<div class="piece-content">
+			&#9823;
+		<div>
+	</div>
+	</td>
+		<td class="square white" id=W_B7>
+	<div class="piece black">
+		<div class="piece-outline">
+			&#9817;
+		</div>
+		<div class="piece-content">
+			&#9823;
+		<div>
+	</div>
+	</td>
+		<td class="square black" id=W_C7>
+	<div class="piece black">
+		<div class="piece-outline">
+			&#9817;
+		</div>
+		<div class="piece-content">
+			&#9823;
+		<div>
+	</div>
+	</td>
+		<td class="square white" id=W_D7>
+	<div class="piece black">
+		<div class="piece-outline">
+			&#9817;
+		</div>
+		<div class="piece-content">
+			&#9823;
+		<div>
+	</div>
+	</td>
+		<td class="square black" id=W_E7>
+	<div class="piece black">
+		<div class="piece-outline">
+			&#9817;
+		</div>
+		<div class="piece-content">
+			&#9823;
+		<div>
+	</div>
+	</td>
+		<td class="square white" id=W_F7>
+	<div class="piece black">
+		<div class="piece-outline">
+			&#9817;
+		</div>
+		<div class="piece-content">
+			&#9823;
+		<div>
+	</div>
+	</td>
+		<td class="square black" id=W_G7>
+	<div class="piece black">
+		<div class="piece-outline">
+			&#9817;
+		</div>
+		<div class="piece-content">
+			&#9823;
+		<div>
+	</div>
+	</td>
+		<td class="square white" id=W_H7>
+	<div class="piece black">
+		<div class="piece-outline">
+			&#9817;
+		</div>
+		<div class="piece-content">
+			&#9823;
+		<div>
+	</div>
+	</td>
+		<th class="rank axis axis_righ" data-hide-axis="true">7</th>
+	</tr>
+	<tr>
+		<th class="rank axis axis_left" data-hide-axis="true">6</th>
+		<td class="square white" id=W_A6></td>
+		<td class="square black" id=W_B6></td>
+		<td class="square white" id=W_C6></td>
+		<td class="square black" id=W_D6></td>
+		<td class="square white" id=W_E6></td>
+		<td class="square black" id=W_F6></td>
+		<td class="square white" id=W_G6></td>
+		<td class="square black" id=W_H6></td>
+		<th class="rank axis axis_righ" data-hide-axis="true">6</th>
+	</tr>
+	<tr>
+		<th class="rank axis axis_left" data-hide-axis="true">5</th>
+		<td class="square black" id=W_A5></td>
+		<td class="square white" id=W_B5></td>
+		<td class="square black" id=W_C5></td>
+		<td class="square white" id=W_D5></td>
+		<td class="square black" id=W_E5></td>
+		<td class="square white" id=W_F5></td>
+		<td class="square black" id=W_G5></td>
+		<td class="square white" id=W_H5></td>
+		<th class="rank axis axis_righ" data-hide-axis="true">5</th>
+	</tr>
+	<tr>
+		<th class="rank axis axis_left" data-hide-axis="true">4</th>
+		<td class="square white" id=W_A4></td>
+		<td class="square black" id=W_B4></td>
+		<td class="square white" id=W_C4></td>
+		<td class="square black" id=W_D4></td>
+		<td class="square white" id=W_E4></td>
+		<td class="square black" id=W_F4></td>
+		<td class="square white" id=W_G4></td>
+		<td class="square black" id=W_H4></td>
+		<th class="rank axis axis_righ" data-hide-axis="true">4</th>
+	</tr>
+	<tr>
+		<th class="rank axis axis_left" data-hide-axis="true">3</th>
+		<td class="square black" id=W_A3></td>
+		<td class="square white" id=W_B3></td>
+		<td class="square black" id=W_C3></td>
+		<td class="square white" id=W_D3></td>
+		<td class="square black" id=W_E3></td>
+		<td class="square white" id=W_F3></td>
+		<td class="square black" id=W_G3></td>
+		<td class="square white" id=W_H3></td>
+		<th class="rank axis axis_righ" data-hide-axis="true">3</th>
+	</tr>
+	<tr>
+		<th class="rank axis axis_left" data-hide-axis="true">2</th>
+		<td class="square white" id=W_A2>
+	<div class="piece white">
+		<div class="piece-outline">
+			&#9817;
+		</div>
+		<div class="piece-content">
+			&#9823;
+		<div>
+	</div>
+	</td>
+		<td class="square black" id=W_B2>
+	<div class="piece white">
+		<div class="piece-outline">
+			&#9817;
+		</div>
+		<div class="piece-content">
+			&#9823;
+		<div>
+	</div>
+	</td>
+		<td class="square white" id=W_C2>
+	<div class="piece white">
+		<div class="piece-outline">
+			&#9817;
+		</div>
+		<div class="piece-content">
+			&#9823;
+		<div>
+	</div>
+	</td>
+		<td class="square black" id=W_D2>
+	<div class="piece white">
+		<div class="piece-outline">
+			&#9817;
+		</div>
+		<div class="piece-content">
+			&#9823;
+		<div>
+	</div>
+	</td>
+		<td class="square white" id=W_E2>
+	<div class="piece white">
+		<div class="piece-outline">
+			&#9817;
+		</div>
+		<div class="piece-content">
+			&#9823;
+		<div>
+	</div>
+	</td>
+		<td class="square black" id=W_F2>
+	<div class="piece white">
+		<div class="piece-outline">
+			&#9817;
+		</div>
+		<div class="piece-content">
+			&#9823;
+		<div>
+	</div>
+	</td>
+		<td class="square white" id=W_G2>
+	<div class="piece white">
+		<div class="piece-outline">
+			&#9817;
+		</div>
+		<div class="piece-content">
+			&#9823;
+		<div>
+	</div>
+	</td>
+		<td class="square black" id=W_H2>
+	<div class="piece white">
+		<div class="piece-outline">
+			&#9817;
+		</div>
+		<div class="piece-content">
+			&#9823;
+		<div>
+	</div>
+	</td>
+		<th class="rank axis axis_righ" data-hide-axis="true">2</th>
+	</tr>
+	<tr>
+		<th class="rank axis axis_left" data-hide-axis="true">1</th>
+		<td class="square black" id=W_A1>
+	<div class="piece white">
+		<div class="piece-outline">
+			&#9814;
+		</div>
+		<div class="piece-content">
+			&#9820;
+		<div>
+	</div>
+	</td>
+		<td class="square white" id=W_B1>
+	<div class="piece white">
+		<div class="piece-outline">
+			&#9816;
+		</div>
+		<div class="piece-content">
+			&#9822;
+		<div>
+	</div>
+	</td>
+		<td class="square black" id=W_C1>
+	<div class="piece white">
+		<div class="piece-outline">
+			&#9815;
+		</div>
+		<div class="piece-content">
+			&#9821;
+		<div>
+	</div>
+	</td>
+		<td class="square white" id=W_D1>
+	<div class="piece white">
+		<div class="piece-outline">
+			&#9813;
+		</div>
+		<div class="piece-content">
+			&#9819;
+		<div>
+	</div>
+	</td>
+		<td class="square black" id=W_E1>
+	<div class="piece white">
+		<div class="piece-outline">
+			&#9812;
+		</div>
+		<div class="piece-content">
+			&#9818;
+		<div>
+	</div>
+	</td>
+		<td class="square white" id=W_F1>
+	<div class="piece white">
+		<div class="piece-outline">
+			&#9815;
+		</div>
+		<div class="piece-content">
+			&#9821;
+		<div>
+	</div>
+	</td>
+		<td class="square black" id=W_G1>
+	<div class="piece white">
+		<div class="piece-outline">
+			&#9816;
+		</div>
+		<div class="piece-content">
+			&#9822;
+		<div>
+	</div>
+	</td>
+		<td class="square white" id=W_H1>
+	<div class="piece white">
+		<div class="piece-outline">
+			&#9814;
+		</div>
+		<div class="piece-content">
+			&#9820;
+		<div>
+	</div>
+	</td>
+		<th class="rank axis axis_righ" data-hide-axis="true">1</th>
+	</tr>
+	<tr>
+		<th></th>
+		<th class="file axis axis_bot" data-hide-axis="true">A</th>
+		<th class="file axis axis_bot" data-hide-axis="true">B</th>
+		<th class="file axis axis_bot" data-hide-axis="true">C</th>
+		<th class="file axis axis_bot" data-hide-axis="true">D</th>
+		<th class="file axis axis_bot" data-hide-axis="true">E</th>
+		<th class="file axis axis_bot" data-hide-axis="true">F</th>
+		<th class="file axis axis_bot" data-hide-axis="true">G</th>
+		<th class="file axis axis_bot" data-hide-axis="true">H</th>
+		<th></th>
+	</tr>
+</table>
+<table class="board" id="B_board" data-hide-board="true">
+	<tr>
+		<th></th>
+		<th class="file axis axis_top" data-hide-axis="true">H</th>
+		<th class="file axis axis_top" data-hide-axis="true">G</th>
+		<th class="file axis axis_top" data-hide-axis="true">F</th>
+		<th class="file axis axis_top" data-hide-axis="true">E</th>
+		<th class="file axis axis_top" data-hide-axis="true">D</th>
+		<th class="file axis axis_top" data-hide-axis="true">C</th>
+		<th class="file axis axis_top" data-hide-axis="true">B</th>
+		<th class="file axis axis_top" data-hide-axis="true">A</th>
+		<th></th>
+	</tr>
+	<tr>
+		<th class="rank axis axis_left" data-hide-axis="true">1</th>
+		<td class="square white" id=B_H1>
+	<div class="piece white">
+		<div class="piece-outline">
+			&#9814;
+		</div>
+		<div class="piece-content">
+			&#9820;
+		<div>
+	</div>
+	</td>
+		<td class="square black" id=B_G1>
+	<div class="piece white">
+		<div class="piece-outline">
+			&#9816;
+		</div>
+		<div class="piece-content">
+			&#9822;
+		<div>
+	</div>
+	</td>
+		<td class="square white" id=B_F1>
+	<div class="piece white">
+		<div class="piece-outline">
+			&#9815;
+		</div>
+		<div class="piece-content">
+			&#9821;
+		<div>
+	</div>
+	</td>
+		<td class="square black" id=B_E1>
+	<div class="piece white">
+		<div class="piece-outline">
+			&#9812;
+		</div>
+		<div class="piece-content">
+			&#9818;
+		<div>
+	</div>
+	</td>
+		<td class="square white" id=B_D1>
+	<div class="piece white">
+		<div class="piece-outline">
+			&#9813;
+		</div>
+		<div class="piece-content">
+			&#9819;
+		<div>
+	</div>
+	</td>
+		<td class="square black" id=B_C1>
+	<div class="piece white">
+		<div class="piece-outline">
+			&#9815;
+		</div>
+		<div class="piece-content">
+			&#9821;
+		<div>
+	</div>
+	</td>
+		<td class="square white" id=B_B1>
+	<div class="piece white">
+		<div class="piece-outline">
+			&#9816;
+		</div>
+		<div class="piece-content">
+			&#9822;
+		<div>
+	</div>
+	</td>
+		<td class="square black" id=B_A1>
+	<div class="piece white">
+		<div class="piece-outline">
+			&#9814;
+		</div>
+		<div class="piece-content">
+			&#9820;
+		<div>
+	</div>
+	</td>
+		<th class="rank axis axis_righ" data-hide-axis="true">1</th>
+	</tr>
+	<tr>
+		<th class="rank axis axis_left" data-hide-axis="true">2</th>
+		<td class="square black" id=B_H2>
+	<div class="piece white">
+		<div class="piece-outline">
+			&#9817;
+		</div>
+		<div class="piece-content">
+			&#9823;
+		<div>
+	</div>
+	</td>
+		<td class="square white" id=B_G2>
+	<div class="piece white">
+		<div class="piece-outline">
+			&#9817;
+		</div>
+		<div class="piece-content">
+			&#9823;
+		<div>
+	</div>
+	</td>
+		<td class="square black" id=B_F2>
+	<div class="piece white">
+		<div class="piece-outline">
+			&#9817;
+		</div>
+		<div class="piece-content">
+			&#9823;
+		<div>
+	</div>
+	</td>
+		<td class="square white" id=B_E2>
+	<div class="piece white">
+		<div class="piece-outline">
+			&#9817;
+		</div>
+		<div class="piece-content">
+			&#9823;
+		<div>
+	</div>
+	</td>
+		<td class="square black" id=B_D2>
+	<div class="piece white">
+		<div class="piece-outline">
+			&#9817;
+		</div>
+		<div class="piece-content">
+			&#9823;
+		<div>
+	</div>
+	</td>
+		<td class="square white" id=B_C2>
+	<div class="piece white">
+		<div class="piece-outline">
+			&#9817;
+		</div>
+		<div class="piece-content">
+			&#9823;
+		<div>
+	</div>
+	</td>
+		<td class="square black" id=B_B2>
+	<div class="piece white">
+		<div class="piece-outline">
+			&#9817;
+		</div>
+		<div class="piece-content">
+			&#9823;
+		<div>
+	</div>
+	</td>
+		<td class="square white" id=B_A2>
+	<div class="piece white">
+		<div class="piece-outline">
+			&#9817;
+		</div>
+		<div class="piece-content">
+			&#9823;
+		<div>
+	</div>
+	</td>
+		<th class="rank axis axis_righ" data-hide-axis="true">2</th>
+	</tr>
+	<tr>
+		<th class="rank axis axis_left" data-hide-axis="true">3</th>
+		<td class="square white" id=B_H3></td>
+		<td class="square black" id=B_G3></td>
+		<td class="square white" id=B_F3></td>
+		<td class="square black" id=B_E3></td>
+		<td class="square white" id=B_D3></td>
+		<td class="square black" id=B_C3></td>
+		<td class="square white" id=B_B3></td>
+		<td class="square black" id=B_A3></td>
+		<th class="rank axis axis_righ" data-hide-axis="true">3</th>
+	</tr>
+	<tr>
+		<th class="rank axis axis_left" data-hide-axis="true">4</th>
+		<td class="square black" id=B_H4></td>
+		<td class="square white" id=B_G4></td>
+		<td class="square black" id=B_F4></td>
+		<td class="square white" id=B_E4></td>
+		<td class="square black" id=B_D4></td>
+		<td class="square white" id=B_C4></td>
+		<td class="square black" id=B_B4></td>
+		<td class="square white" id=B_A4></td>
+		<th class="rank axis axis_righ" data-hide-axis="true">4</th>
+	</tr>
+	<tr>
+		<th class="rank axis axis_left" data-hide-axis="true">5</th>
+		<td class="square white" id=B_H5></td>
+		<td class="square black" id=B_G5></td>
+		<td class="square white" id=B_F5></td>
+		<td class="square black" id=B_E5></td>
+		<td class="square white" id=B_D5></td>
+		<td class="square black" id=B_C5></td>
+		<td class="square white" id=B_B5></td>
+		<td class="square black" id=B_A5></td>
+		<th class="rank axis axis_righ" data-hide-axis="true">5</th>
+	</tr>
+	<tr>
+		<th class="rank axis axis_left" data-hide-axis="true">6</th>
+		<td class="square black" id=B_H6></td>
+		<td class="square white" id=B_G6></td>
+		<td class="square black" id=B_F6></td>
+		<td class="square white" id=B_E6></td>
+		<td class="square black" id=B_D6></td>
+		<td class="square white" id=B_C6></td>
+		<td class="square black" id=B_B6></td>
+		<td class="square white" id=B_A6></td>
+		<th class="rank axis axis_righ" data-hide-axis="true">6</th>
+	</tr>
+	<tr>
+		<th class="rank axis axis_left" data-hide-axis="true">7</th>
+		<td class="square white" id=B_H7>
+	<div class="piece black">
+		<div class="piece-outline">
+			&#9817;
+		</div>
+		<div class="piece-content">
+			&#9823;
+		<div>
+	</div>
+	</td>
+		<td class="square black" id=B_G7>
+	<div class="piece black">
+		<div class="piece-outline">
+			&#9817;
+		</div>
+		<div class="piece-content">
+			&#9823;
+		<div>
+	</div>
+	</td>
+		<td class="square white" id=B_F7>
+	<div class="piece black">
+		<div class="piece-outline">
+			&#9817;
+		</div>
+		<div class="piece-content">
+			&#9823;
+		<div>
+	</div>
+	</td>
+		<td class="square black" id=B_E7>
+	<div class="piece black">
+		<div class="piece-outline">
+			&#9817;
+		</div>
+		<div class="piece-content">
+			&#9823;
+		<div>
+	</div>
+	</td>
+		<td class="square white" id=B_D7>
+	<div class="piece black">
+		<div class="piece-outline">
+			&#9817;
+		</div>
+		<div class="piece-content">
+			&#9823;
+		<div>
+	</div>
+	</td>
+		<td class="square black" id=B_C7>
+	<div class="piece black">
+		<div class="piece-outline">
+			&#9817;
+		</div>
+		<div class="piece-content">
+			&#9823;
+		<div>
+	</div>
+	</td>
+		<td class="square white" id=B_B7>
+	<div class="piece black">
+		<div class="piece-outline">
+			&#9817;
+		</div>
+		<div class="piece-content">
+			&#9823;
+		<div>
+	</div>
+	</td>
+		<td class="square black" id=B_A7>
+	<div class="piece black">
+		<div class="piece-outline">
+			&#9817;
+		</div>
+		<div class="piece-content">
+			&#9823;
+		<div>
+	</div>
+	</td>
+		<th class="rank axis axis_righ" data-hide-axis="true">7</th>
+	</tr>
+	<tr>
+		<th class="rank axis axis_left" data-hide-axis="true">8</th>
+		<td class="square black" id=B_H8>
+	<div class="piece black">
+		<div class="piece-outline">
+			&#9814;
+		</div>
+		<div class="piece-content">
+			&#9820;
+		<div>
+	</div>
+	</td>
+		<td class="square white" id=B_G8>
+	<div class="piece black">
+		<div class="piece-outline">
+			&#9816;
+		</div>
+		<div class="piece-content">
+			&#9822;
+		<div>
+	</div>
+	</td>
+		<td class="square black" id=B_F8>
+	<div class="piece black">
+		<div class="piece-outline">
+			&#9815;
+		</div>
+		<div class="piece-content">
+			&#9821;
+		<div>
+	</div>
+	</td>
+		<td class="square white" id=B_E8>
+	<div class="piece black">
+		<div class="piece-outline">
+			&#9812;
+		</div>
+		<div class="piece-content">
+			&#9818;
+		<div>
+	</div>
+	</td>
+		<td class="square black" id=B_D8>
+	<div class="piece black">
+		<div class="piece-outline">
+			&#9813;
+		</div>
+		<div class="piece-content">
+			&#9819;
+		<div>
+	</div>
+	</td>
+		<td class="square white" id=B_C8>
+	<div class="piece black">
+		<div class="piece-outline">
+			&#9815;
+		</div>
+		<div class="piece-content">
+			&#9821;
+		<div>
+	</div>
+	</td>
+		<td class="square black" id=B_B8>
+	<div class="piece black">
+		<div class="piece-outline">
+			&#9816;
+		</div>
+		<div class="piece-content">
+			&#9822;
+		<div>
+	</div>
+	</td>
+		<td class="square white" id=B_A8>
+	<div class="piece black">
+		<div class="piece-outline">
+			&#9814;
+		</div>
+		<div class="piece-content">
+			&#9820;
+		<div>
+	</div>
+	</td>
+		<th class="rank axis axis_righ" data-hide-axis="true">8</th>
+	</tr>
+	<tr>
+		<th></th>
+		<th class="file axis axis_bot" data-hide-axis="true">H</th>
+		<th class="file axis axis_bot" data-hide-axis="true">G</th>
+		<th class="file axis axis_bot" data-hide-axis="true">F</th>
+		<th class="file axis axis_bot" data-hide-axis="true">E</th>
+		<th class="file axis axis_bot" data-hide-axis="true">D</th>
+		<th class="file axis axis_bot" data-hide-axis="true">C</th>
+		<th class="file axis axis_bot" data-hide-axis="true">B</th>
+		<th class="file axis axis_bot" data-hide-axis="true">A</th>
+		<th></th>
+	</tr>
+</table>
+
+	<!-- <div id="feedback-pane"></div> -->
+
+</body>
+<script type="text/javascript">
+	
+var indicator = document.getElementById('indicator');
+var timeoutId;
+function indicate(status){
+	indicator.className = status;
+	indicator.textContent = status.toUpperCase();
+	clearTimeout(timeoutId);
+	timeoutId = setTimeout(function(){
+		indicator.className = '';
+		indicator.textContent = '';
+	}, 400);
+}
+
+var state = {};
+
+state.targetCoord = null;
+
+state.mode = 'type';
+
+state.publishGuess = function (guess, inputSource) {
+	if (this.mode !== inputSource) return;
+
+	if (this.targetCoord === guess) {
+		indicate('correct');
+		this.randomizeTargetCoord();
+	} else {
+		indicate('incorrect');
+		if (this.newOnFail){
+			this.randomizeTargetCoord();
+		}
+	}
+};
+
+state.setOrientation = function (perspectiveIsWhite) {
+	var whiteBoard = document.getElementById('W_board');
+	var blackBoard = document.getElementById('B_board');
+
+	if (perspectiveIsWhite) {
+		whiteBoard.setAttribute('data-hide-board', 'false');
+		blackBoard.setAttribute('data-hide-board', 'true');
+	} else {
+		whiteBoard.setAttribute('data-hide-board', 'true');
+		blackBoard.setAttribute('data-hide-board', 'false');
+	}
+};
+
+document.getElementById('mode-type').onchange = function(){
+	state.mode = 'type';
+	document.getElementById('input-group').setAttribute('data-hide-input', 'false');
+	document.getElementById('click-mode-group').setAttribute('data-hide-input', 'true');
+	state.randomizeTargetCoord();
+};
+
+document.getElementById('mode-click').onchange = function(){
+	state.mode = 'click';
+	document.getElementById('input-group').setAttribute('data-hide-input', 'true');
+	document.getElementById('click-mode-group').setAttribute('data-hide-input', 'false');
+	state.randomizeTargetCoord();
+};
+
+document.getElementById('failure').onchange = function(){
+	state.newOnFail = document.getElementById('failure').checked;
+};
+
+
+state.randomizeTargetCoord = function () {
+	var newCoord;
+	do {
+		var file = Math.floor(Math.random() * 8);
+		var rank = Math.floor(Math.random() * 8)+1;
+		newCoord = 'ABCDEFGH'[file] + rank;
+	} while (this.targetCoord === newCoord);
+
+	this.targetCoord = newCoord;
+
+	// Clear type-mode stuff
+	var squares = document.getElementsByClassName('square');
+	for (var i=0; i<squares.length; i++){
+		squares[i].removeAttribute('highlighted');
+	}
+
+	// Clear click-mode stuff
+	document.getElementById('target-coord').textContent = '';
+
+	if (this.mode === 'click'){
+		document.getElementById('target-coord').textContent =this.targetCoord;
+		// = canonincalToFormattedCoord( this.targetCoord, this.orientation );
+	} else {
+		document.getElementById('W_'+this.targetCoord).setAttribute('highlighted', 'true');
+		document.getElementById('B_'+this.targetCoord).setAttribute('highlighted', 'true');
+	}
+};
+
+document.getElementById('show-labels').onclick = function () {
+	var axes = document.getElementsByClassName('axis');
+	for (var i=0; i<axes.length; i++){
+		if (this.checked) {
+			axes[i].removeAttribute('data-hide-axis');
+		} else {
+			axes[i].setAttribute('data-hide-axis','true');
+		}
+	}	
+};
+
+document.getElementById('show-pieces').onclick = function () {
+	var pieces = document.getElementsByClassName('piece');
+	for (var i=0; i<pieces.length; i++){
+		if (this.checked) {
+			pieces[i].removeAttribute('data-hide-piece');
+		} else {
+			pieces[i].setAttribute('data-hide-piece','true');
+		}
+	}	
+};
+
+document.getElementById('coord-input').onkeydown = function (event){
+	if (event.keyCode == 13){ 		// ENTER
+		var guess = this.value.trim().toUpperCase();
+		state.publishGuess(guess, 'type');
+		this.value = '';
+	}
+};
+
+document.getElementById('player-white').onchange = function () {
+	state.setOrientation(true);
+};
+
+document.getElementById('player-black').onchange = function () {
+	state.setOrientation(false);
+};
+
+var squares = document.getElementsByClassName('square');
+for (var i=0; i<squares.length; i++){
+	squares[i].onclick = function () {
+		state.publishGuess(this.id.split('_')[1], 'click');
+	};
+}
+
+state.randomizeTargetCoord();
+
+</script>
+
+</html>
