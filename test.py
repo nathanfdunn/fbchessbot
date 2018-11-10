@@ -1141,6 +1141,11 @@ class RemindersTest(BaseTest):
 	# 	reminders = self.db.get_reminders()
 	# 	self.assertTrue(len(reminders) > 0)
 
+@unittest.skip
+class VariationsTest(BaseTest):
+	def test_960(self):
+		pass
+
 
 if __name__ == '__main__':
 	unittest.main()

@@ -36,6 +36,11 @@ Reminder = collections.namedtuple('Reminder', 'whiteplayerid, whiteplayer_nickna
 GameSummary = Reminder
 
 class ChessBoard(chess.Board):
+	def __init__(self, fen=None):
+		if fen is None:
+			fen = chess.Board().fen()
+		super().__init__(fen, chess960=True)
+
 	def to_byte_string(self):
 		original_fen = self.original_fen()
 		blank = ChessBoard(original_fen)
