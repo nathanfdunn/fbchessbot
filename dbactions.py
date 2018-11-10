@@ -569,3 +569,19 @@ class DB:
 				''', [self.now_provider.utcnow()])#, count])
 
 			return list(cur)
+
+
+
+# if __name__ == '__main__':
+# 	print('dafuq')
+# 	db = DB()
+# 	game = db.get_context(db.id_from_nickname('nate'))[-1]
+# 	print(game.id)
+# 	with db.cursor() as cur:
+# 		cur.execute('''
+# 			UPDATE games
+# 			SET board = (SELECT board FROM games where id = 102)
+# 			WHERE id = 101
+# 			''', [])
+
+

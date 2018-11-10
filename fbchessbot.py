@@ -731,11 +731,13 @@ if sys.flags.debug:
 		messages.append(('cb-game', board_image_url))
 		print(recipient, board_image_url)
 
+	print('starting up repl')
 	# TODO templates?
 	@app.route('/repl', methods=['GET', 'POST'])
 	def repl():
 		if request.method == 'POST':
 			sender = request.form.get('sender') or ''
+			sender = db.id_from_nickname(sender) or sender
 			message = request.form.get('message') or ''
 			print(f'repl: {sender}, {message}')
 			messages.append((sender, message))
@@ -744,17 +746,18 @@ if sys.flags.debug:
 		# if request.method == 'GET':
 		table = '<table>'
 		for sender, message in messages:
+			payload = f'<img height="200" src="{message}">' if message.startswith('https://') else message
 			table += f'''
 				<tr>
 					<td>{sender}</td>
-					<td>{flask_encode_html(message)}</td>
+					<td>{payload}</td>
 				</tr>'''
 		table += '</table>'
 
 		return f'''
 			{table}
 			<form action="/repl" method="post">
-				<input type="text" name="sender" value="12345">
+				<input type="text" name="sender" value="">
 				<input type="text" name="message">
 				<input type="submit">
 			</form>
