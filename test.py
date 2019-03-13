@@ -39,6 +39,9 @@ def clear_mocks():
 	sent_game_urls = defaultdict(list)
 	sent_pgns = defaultdict(list)
 
+def display_mocks():
+	print(sent_messages, sent_game_urls, sent_pgns)
+
 fbchessbot.send_message = mock_send_message
 fbchessbot.send_game_rep = mock_send_game_rep
 fbchessbot.send_pgn = mock_send_pgn
@@ -64,11 +67,17 @@ class NowProvider:
 class BaseTest(unittest.TestCase):
 	expected_replies = None
 
+	def assertNoMessage(self, recipient):
+		messages = sent_messages[recipient]
+		if messages:
+			raise AssertionError(f'Messages were found for {recipient}: {messages}')
+
 	def assertLastMessageEquals(self, recipient, text, *, target_index=-1):
 		# recipient = str(recipient)
 		messages = sent_messages[recipient]
 		if not messages:
-			raise AssertionError(f'No messages for {recipient}. Some for {[recipient for recipient in sent_messages if sent_messages[recipient]]}{sent_messages}')
+			recipient_list = [recipient for recipient in sent_messages if sent_messages[recipient]]
+			raise AssertionError(f'No messages for {recipient}. Some for {recipient_list}{sent_messages}')
 		last_message = messages[target_index]
 		# This only works because we're multiply inheriting from unittest.TestCase as well
 		self.assertEqual(last_message, text)
@@ -118,7 +127,18 @@ class BaseTest(unittest.TestCase):
 		self.assertLastBoardImageEqualsI(fen, 'b', blackplayerid)
 
 
-	def register_player(self, player_name, playerid=None):
+	def register_player(self, player_name=None, playerid=None):
+		if (player_name is None) + (playerid is None) != 1:
+			raise Exception('Exactly one of `player_name` or `playerid` must be supplied')
+
+		if player_name is None:
+			player_name = {
+				nateid: 'Nate',
+				chadid: 'Chad',
+				jessid: 'Jess',
+				izzyid: 'Izzy'
+			}[playerid]
+
 		if playerid is None:
 			playerid = {
 				'nate': nateid,
@@ -126,6 +146,7 @@ class BaseTest(unittest.TestCase):
 				'jess': jessid,
 				'izzy': izzyid
 			}[player_name.lower()]
+
 		self.handle_message(playerid, f'My name is {player_name}', expected_replies=1)
 
 	def register_all(self):
@@ -145,6 +166,12 @@ class BaseTest(unittest.TestCase):
 		cls.db.delete_all()
 		del cls.db, fbchessbot.db
 
+	def init_game(self, whiteplayerid, blackplayerid):
+		self.register_player(playerid=whiteplayerid)
+		self.register_player(playerid=blackplayerid)
+		self.handle_message(whiteplayerid, f'Play against {namemap[blackplayerid]}', expected_replies=None)
+		self.handle_message(whiteplayerid, 'new game white', expected_replies=None)
+		self.perform_move(whiteplayerid, 'e4')
 
 	def tearDown(self):
 		self.db.delete_all()
@@ -938,6 +965,22 @@ class TestChallengeAcceptance(BaseTest):
 
 	def test_can_challenge_with_color(self):
 		self.handle_message(nateid, 'Play against jess white', expected_replies=3)
+
+
+class PingTest(BaseTest):
+	def setUp(self):
+		self.init_game(nateid, jessid)
+		clear_mocks()
+
+	def test_can_ping(self):
+		self.handle_message(nateid, 'ping')
+		self.assertLastMessageEquals(jessid, 'It is your turn in your game with Nate')
+
+	def test_cannot_ping_on_your_turn(self):
+		self.handle_message(jessid, 'ping')
+		self.assertLastMessageEquals(jessid, 'It is your turn. Did not ping Nate')
+		self.assertNoMessage(nateid)
+
 
 class RemindersTest(BaseTest):
 	def set_now(self, *, days=0, hours=0):

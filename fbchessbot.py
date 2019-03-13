@@ -519,6 +519,14 @@ def reminders(offon, sender):
 	else:
 		send_message(sender, "Try either 'reminders off' or 'reminders on'")
 
+@command(require_game=True)
+def ping(player, opponent, game):
+	if game.is_active_player(player.id):
+		send_message(player.id, f'It is your turn. Did not ping {opponent.nickname}')
+	else:
+		send_message(opponent.id, f'It is your turn in your game with {player.nickname}')
+		send_message(player.id, f'Pinged {opponent.nickname}')
+
 def normalize_move(game, move):
 	if not move:
 		return move
