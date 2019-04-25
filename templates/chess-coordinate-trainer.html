@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html>
 <head>
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.0/jquery.min.js"></script>
+
 	<style type="text/css">
 
 #indicator.correct {
@@ -45,12 +47,44 @@
 	background: #555;
 }
 
+.square.black[eqc="0"] {
+	background: darkblue;
+}
+
+.square.black[eqc="1"] {
+	background: darkred;
+}
+
+.square.black[eqc="2"] {
+	background: darkgreen;
+}
+
+.square.black[eqc="3"] {
+	background: #770;
+}
+
 .square.black[highlighted="true"] {
 	background: #770;
 }
 
 .square.white {
 	background: #ccc;
+}
+
+.square.white[eqc="0"] {
+	background: cornflowerblue;
+}
+
+.square.white[eqc="1"] {
+	background: pink;
+}
+
+.square.white[eqc="2"] {
+	background: lightgreen;
+}
+
+.square.white[eqc="3"] {
+	background: #dd6;
 }
 
 .square.white[highlighted="true"] {
@@ -142,7 +176,15 @@
 			
 			<input type="radio" id="player-black" name="player-color">
 			<label for="player-black">Black's perspective</label>
-		
+		</div>
+
+		<div>
+			<label for="partition">Partition</label>
+			<select id="partition">
+				<!-- TODO auto generate -->
+				<option value="" selected>None</option>
+				<option value="quadrant">Quadrant</option>
+			</select>
 		</div>
 	</div>
 
@@ -985,6 +1027,20 @@
 </body>
 <script type="text/javascript">
 	
+var partitions = { quadrant:
+	{name: 'quadrant', colors: ['red', 'blue', 'green', 'yellow'],
+		classes: [
+		[1, 1, 1, 1, 2, 2, 2, 2],
+		[1, 1, 1, 1, 2, 2, 2, 2],
+		[1, 1, 1, 1, 2, 2, 2, 2],
+		[1, 1, 1, 1, 2, 2, 2, 2],
+		[3, 3, 3, 3, 0, 0, 0, 0],
+		[3, 3, 3, 3, 0, 0, 0, 0],
+		[3, 3, 3, 3, 0, 0, 0, 0],
+		[3, 3, 3, 3, 0, 0, 0, 0],
+	]}
+}
+
 var indicator = document.getElementById('indicator');
 var timeoutId;
 function indicate(status){
@@ -1003,10 +1059,20 @@ state.targetCoord = null;
 
 state.mode = 'type';
 
+state.getEquivalenceClass = function(coord){
+	// TODO make a function for this
+	var row = {A:0, B:1, C:2, D:3, E:4, F:5, G:6, H:7}[coord[0]];
+	var col = coord[1] - 1;
+
+	return this.partition.classes[row][col];
+}
+
 state.publishGuess = function (guess, inputSource) {
 	if (this.mode !== inputSource) return;
 
-	if (this.targetCoord === guess) {
+	var eqc1 = this.getEquivalenceClass(this.targetCoord);
+	var eqc2 = this.getEquivalenceClass(guess);
+	if (eqc1 === eqc2) {
 		indicate('correct');
 		this.randomizeTargetCoord();
 	} else {
@@ -1030,6 +1096,19 @@ state.setOrientation = function (perspectiveIsWhite) {
 	}
 };
 
+state.setPartition = function(partitionName){
+	var partition = partitions[partitionName];
+	state.partition = partition;
+	for (var i=0; i<partition.classes.length; i++){
+		var row = partition.classes[i];
+		for (var j=0; j<row.length; j++){
+			var id = 'ABCDEFGH'[i] + (j+1);
+			$('#B_' + id).attr('eqc', partition.classes[i][j]);
+			$('#W_' + id).attr('eqc', partition.classes[i][j]);
+		}
+	}
+}
+
 document.getElementById('mode-type').onchange = function(){
 	state.mode = 'type';
 	document.getElementById('input-group').setAttribute('data-hide-input', 'false');
@@ -1048,6 +1127,9 @@ document.getElementById('failure').onchange = function(){
 	state.newOnFail = document.getElementById('failure').checked;
 };
 
+$('#partition').change(function(){
+	state.setPartition($('#partition').val());
+});
 
 state.randomizeTargetCoord = function () {
 	var newCoord;
