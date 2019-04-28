@@ -1060,6 +1060,9 @@ state.targetCoord = null;
 state.mode = 'type';
 
 state.getEquivalenceClass = function(coord){
+	if (!this.partition){
+		return coord;
+	}
 	// TODO make a function for this
 	var row = {A:0, B:1, C:2, D:3, E:4, F:5, G:6, H:7}[coord[0]];
 	var col = coord[1] - 1;
@@ -1099,13 +1102,18 @@ state.setOrientation = function (perspectiveIsWhite) {
 state.setPartition = function(partitionName){
 	var partition = partitions[partitionName];
 	state.partition = partition;
-	for (var i=0; i<partition.classes.length; i++){
-		var row = partition.classes[i];
-		for (var j=0; j<row.length; j++){
-			var id = 'ABCDEFGH'[i] + (j+1);
-			$('#B_' + id).attr('eqc', partition.classes[i][j]);
-			$('#W_' + id).attr('eqc', partition.classes[i][j]);
-		}
+	if (state.partition){
+		for (var i=0; i<partition.classes.length; i++){
+			var row = partition.classes[i];
+			for (var j=0; j<row.length; j++){
+				var id = 'ABCDEFGH'[i] + (j+1);
+				$('#B_' + id).attr('eqc', partition.classes[i][j]);
+				$('#W_' + id).attr('eqc', partition.classes[i][j]);
+			}
+		}		
+	}
+	else {
+		$('.square').attr('eqc', '');
 	}
 }
 
