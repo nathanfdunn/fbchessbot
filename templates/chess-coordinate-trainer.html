@@ -63,8 +63,28 @@
 	background: #770;
 }
 
+.square.black[eqc="4"] {
+	background:  #e67e00;
+}
+
+.square.black[eqc="5"] {
+	background: purple;
+}
+
+.square.black[eqc="6"] {
+	background: saddlebrown;
+}
+
+.square.black[eqc="7"] {
+	background:  #009999;
+}
+
 .square.black[highlighted="true"] {
 	background: #770;
+}
+
+.square.black[eqc][highlighted="true"] {
+	background: black;
 }
 
 .square.white {
@@ -87,8 +107,28 @@
 	background: #dd6;
 }
 
+.square.white[eqc="4"] {
+	background:  #ffc966;
+}
+
+.square.white[eqc="5"] {
+	background:  #d1c2f0;
+}
+
+.square.white[eqc="6"] {
+	background: peru;
+}
+
+.square.white[eqc="7"] {
+	background: #00ffff;
+}
+
 .square.white[highlighted="true"] {
 	background: #dd6;
+}
+
+.square.white[eqc][highlighted="true"] {
+	background: white;
 }
 
 .piece[data-hide-piece="true"] {
@@ -181,9 +221,7 @@
 		<div>
 			<label for="partition">Partition</label>
 			<select id="partition">
-				<!-- TODO auto generate -->
 				<option value="" selected>None</option>
-				<option value="quadrant">Quadrant</option>
 			</select>
 		</div>
 	</div>
@@ -1038,8 +1076,94 @@ var partitions = { quadrant:
 		[3, 3, 3, 3, 0, 0, 0, 0],
 		[3, 3, 3, 3, 0, 0, 0, 0],
 		[3, 3, 3, 3, 0, 0, 0, 0],
-	]}
+	]},
+	ring:
+	{name: 'ring', 
+		classes: [
+		[1, 1, 1, 1, 1, 1, 1, 1],
+		[1, 2, 2, 2, 2, 2, 2, 1],
+		[1, 2, 3, 3, 3, 3, 2, 1],
+		[1, 2, 3, 0, 0, 3, 2, 1],
+		[1, 2, 3, 0, 0, 3, 2, 1],
+		[1, 2, 3, 3, 3, 3, 2, 1],
+		[1, 2, 2, 2, 2, 2, 2, 1],
+		[1, 1, 1, 1, 1, 1, 1, 1],
+		]
+	},
+	rank:
+	{name: 'rank',
+		classes: [
+		[0, 0, 0, 0, 0, 0, 0, 0],
+		[1, 1, 1, 1, 1, 1, 1, 1],
+		[2, 2, 2, 2, 2, 2, 2, 2],
+		[3, 3, 3, 3, 3, 3, 3, 3],
+		[4, 4, 4, 4, 4, 4, 4, 4],
+		[5, 5, 5, 5, 5, 5, 5, 5],
+		[6, 6, 6, 6, 6, 6, 6, 6],
+		[7, 7, 7, 7, 7, 7, 7, 7],
+		]
+	},
+	file:
+	{name: 'file',
+		classes: [
+		[0, 1, 2, 3, 4, 5, 6, 7],
+		[0, 1, 2, 3, 4, 5, 6, 7],
+		[0, 1, 2, 3, 4, 5, 6, 7],
+		[0, 1, 2, 3, 4, 5, 6, 7],
+		[0, 1, 2, 3, 4, 5, 6, 7],
+		[0, 1, 2, 3, 4, 5, 6, 7],
+		[0, 1, 2, 3, 4, 5, 6, 7],
+		[0, 1, 2, 3, 4, 5, 6, 7],
+		]
+	},
+	color:
+	{name: 'color',
+		classes: [
+		[0, 1, 0, 1, 0, 1, 0, 1],
+		[1, 0, 1, 0, 1, 0, 1, 0],
+		[0, 1, 0, 1, 0, 1, 0, 1],
+		[1, 0, 1, 0, 1, 0, 1, 0],
+		[0, 1, 0, 1, 0, 1, 0, 1],
+		[1, 0, 1, 0, 1, 0, 1, 0],
+		[0, 1, 0, 1, 0, 1, 0, 1],
+		[1, 0, 1, 0, 1, 0, 1, 0],
+		]
+	},
+	symrank:
+	{name: 'symrank',
+		classes: [
+		[0, 0, 0, 0, 0, 0, 0, 0],
+		[1, 1, 1, 1, 1, 1, 1, 1],
+		[2, 2, 2, 2, 2, 2, 2, 2],
+		[3, 3, 3, 3, 3, 3, 3, 3],
+		[3, 3, 3, 3, 3, 3, 3, 3],
+		[2, 2, 2, 2, 2, 2, 2, 2],
+		[1, 1, 1, 1, 1, 1, 1, 1],
+		[0, 0, 0, 0, 0, 0, 0, 0],
+		]
+	},
+	symfile:
+	{name: 'symfile',
+		classes: [
+		[0, 1, 2, 3, 3, 2, 1, 0],
+		[0, 1, 2, 3, 3, 2, 1, 0],
+		[0, 1, 2, 3, 3, 2, 1, 0],
+		[0, 1, 2, 3, 3, 2, 1, 0],
+		[0, 1, 2, 3, 3, 2, 1, 0],
+		[0, 1, 2, 3, 3, 2, 1, 0],
+		[0, 1, 2, 3, 3, 2, 1, 0],
+		[0, 1, 2, 3, 3, 2, 1, 0],
+		]
+	}
 }
+
+$(function(){
+	var sel = $('#partition');
+	$.each(partitions, function(key, value){
+		var opt = $('<option></option>').attr('value', key).text(key);
+		sel.append(opt);
+	});
+});
 
 var indicator = document.getElementById('indicator');
 var timeoutId;
@@ -1067,7 +1191,7 @@ state.getEquivalenceClass = function(coord){
 	var row = {A:0, B:1, C:2, D:3, E:4, F:5, G:6, H:7}[coord[0]];
 	var col = coord[1] - 1;
 
-	return this.partition.classes[row][col];
+	return this.partition.classes[col][row];
 }
 
 state.publishGuess = function (guess, inputSource) {
@@ -1106,14 +1230,14 @@ state.setPartition = function(partitionName){
 		for (var i=0; i<partition.classes.length; i++){
 			var row = partition.classes[i];
 			for (var j=0; j<row.length; j++){
-				var id = 'ABCDEFGH'[i] + (j+1);
+				var id = 'ABCDEFGH'[j] + (i+1);
 				$('#B_' + id).attr('eqc', partition.classes[i][j]);
 				$('#W_' + id).attr('eqc', partition.classes[i][j]);
 			}
 		}		
 	}
 	else {
-		$('.square').attr('eqc', '');
+		$('.square').removeAttr('eqc');
 	}
 }
 
