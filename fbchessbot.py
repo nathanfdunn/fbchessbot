@@ -48,6 +48,10 @@ def board_image(fen):
 	board_image.save(board_image_name)
 	return send_file(board_image_name)
 
+@app.route('/sprites/<img>', methods=['GET'])
+def sprites(img):
+	return send_file('sprites/' + img)
+
 @app.route('/board/<fen>', methods=['GET'])
 def board_imageII(fen):
 	# perspective = BLACK if request.args.get('perspective') == 'b' else WHITE
