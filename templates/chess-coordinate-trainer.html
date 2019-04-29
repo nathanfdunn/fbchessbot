@@ -7,19 +7,19 @@
 
 #indicator.correct {
 	background: green;
-	transition: 0.1s;
+	transition: 0.05s;
 }
 
 #indicator.incorrect {
 	background: red;
-	transition: 0.1s;
+	transition: 0.05s;
 }
 
 #indicator {
 	width: 200px;
 	height: 50px;
 	text-align: center;
-	transition: 0.2s;
+	transition: 0.05s;
 }
 
 .board[data-hide-board="true"] {
@@ -1223,7 +1223,7 @@ function indicate(status){
 	timeoutId = setTimeout(function(){
 		indicator.className = '';
 		indicator.textContent = '';
-	}, 400);
+	}, 200);
 }
 
 var state = {};
