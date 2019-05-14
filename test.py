@@ -1190,6 +1190,27 @@ class VariationsTest(BaseTest):
 		pass
 
 
+class ThirdPartiesTest(GamePlayTest):
+	def test_lichess_analysis(self):
+		with self.subTest('White new game'):
+			self.handle_message(nateid, 'explore')
+			self.assertLastMessageEquals(nateid, 'https://lichess.org/analysis/standard/rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR_w_KQkq_-')
+
+		with self.subTest('Black new game'):
+			self.handle_message(jessid, 'explore')
+			self.assertLastMessageEquals(nateid, 'https://lichess.org/analysis/standard/rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR_w_KQkq_-')
+
+		with self.subTest('White new game'):
+			self.handle_message(nateid, 'e4')
+			self.handle_message(nateid, 'explore')
+			self.assertLastMessageEquals(nateid, 'https://lichess.org/analysis/standard/rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR_b_KQkq_-')
+
+		with self.subTest('Black new game'):
+			self.handle_message(jessid, 'explore')
+			self.assertLastMessageEquals(nateid, 'https://lichess.org/analysis/standard/rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR_b_KQkq_-')
+
+
+
 if __name__ == '__main__':
 	unittest.main()
 

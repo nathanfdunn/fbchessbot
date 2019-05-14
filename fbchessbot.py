@@ -531,6 +531,14 @@ def ping(player, opponent, game):
 		send_message(opponent.id, f'It is your turn in your game with {player.nickname}')
 		send_message(player.id, f'Pinged {opponent.nickname}')
 
+@command(require_game=True)
+def explore(player, opponent, game):
+	fen = game.board.fen()
+	fen = fen.split('-')[0]
+	fen = fen.replace(' ', '_') + '-'
+	lichessurl = 'https://lichess.org/analysis/standard/' + fen
+	send_message(player.id, lichessurl)
+
 def normalize_move(game, move):
 	if not move:
 		return move
