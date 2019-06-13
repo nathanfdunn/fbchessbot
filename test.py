@@ -1233,7 +1233,22 @@ class SayTest(BaseTest):
 			self.assertLastMessageEquals(nateid, 'You messaged Chad')
 			self.assertLastMessageEquals(chadid, 'Nate says\nHey')
 
+	def test_cannot_message_blocked(self):
+		self.handle_message(nateid, 'Play against izzy', expected_replies=2)
+		self.handle_message(izzyid, 'Block nate', expected_replies=1)
+		self.handle_message(nateid, 'Play against izzy', expected_replies=1)
+		self.handle_message(nateid, 'Say Hello', expected_replies=1)
+		self.assertLastMessageEquals(nateid, 'There is no one to message')
 
+	def test_complicated_message(self):
+		for msg in [
+			"Hey there  chad, I'm messaging you!!",
+			"   What about   whitespace  ",
+			"And new\nlines\n\nwhy not?\n",
+			"\U0001f481\U0001f44c\U0001f38d\U0001f60d",		# emoji
+		]:
+			self.handle_message(jessid, 'say ' + msg, expected_replies=2)
+			self.assertLastMessageEquals(chadid, 'Jess says\n' + msg.strip())
 
 if __name__ == '__main__':
 	unittest.main()
