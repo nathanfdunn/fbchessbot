@@ -539,6 +539,15 @@ def explore(player, opponent, game):
 	lichessurl = 'https://lichess.org/analysis/standard/' + fen
 	send_message(player.id, lichessurl)
 
+@command(receive_args=True)
+def say(text, sender):
+	player, opponent, game = db.get_context(sender)
+	if opponent is None:
+		send_message(player.id, 'There is no one to message')
+	else:
+		send_message(opponent.id, f'{player.nickname} says\n{text}')
+		send_message(player.id, f'You messaged {opponent.nickname}')
+
 def normalize_move(game, move):
 	if not move:
 		return move

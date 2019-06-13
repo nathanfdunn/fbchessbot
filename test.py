@@ -1209,6 +1209,30 @@ class ThirdPartiesTest(GamePlayTest):
 			self.handle_message(jessid, 'explore')
 			self.assertLastMessageEquals(nateid, 'https://lichess.org/analysis/standard/rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR_b_KQkq_-')
 
+class SayTest(BaseTest):
+	def setUp(self):
+		self.db.delete_all()
+		self.register_all()
+		self.handle_message(jessid, 'Play against Chad')
+
+	def test_no_context(self):
+		self.handle_message(nateid, 'say Hello')
+		self.assertLastMessageEquals(nateid, 'There is no one to message')
+		self.assertNoMessage(izzyid)
+
+	def test_with_opponent(self):
+		with self.subTest('First time messaging'):
+			self.handle_message(nateid, 'play against izzy', expected_replies=2)
+			self.handle_message(nateid, 'say Hello', expected_replies=2)
+			self.assertLastMessageEquals(nateid, 'You messaged Izzy')
+			self.assertLastMessageEquals(izzyid, 'Nate says\nHello')
+
+		with self.subTest('Messaging someone else'):
+			self.handle_message(nateid, 'play against chad', expected_replies=1)
+			self.handle_message(nateid, 'say Hey', expected_replies=2)
+			self.assertLastMessageEquals(nateid, 'You messaged Chad')
+			self.assertLastMessageEquals(chadid, 'Nate says\nHey')
+
 
 
 if __name__ == '__main__':
