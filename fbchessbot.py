@@ -302,17 +302,24 @@ def show(player, opponent, game):
 
 @command(allow_anonymous=True)
 def help(sender):
-	send_message(sender, '''help - Display this help text
-my name is <username> - Choose the name other users can call you by
-play against <playername> - Start playing with another user
-new game <color> - Start a new game with the user you are currently playing against
-show - Display the state of the current game
-resign - Resign the current game
-undo - Request to undo your last move (or accept your opponent's request to undo their move)
+	send_message(sender, '''help - Display this help text.
 
-<move> - Make a move in your current game. Use algebraic notation, such as e4, Nf3, O-O-O
+my name is <username> - Choose the name other users can call you by.
 
-See https://www.facebook.com/Chessbot-173074776551825/ for any questions
+play against <playername> - Start playing with another user.
+
+new game <color> - Start a new game with the user you are currently playing against.
+
+show - Display the state of the current game.
+
+resign - Resign the current game.
+
+undo - Request to undo your last move (or accept your opponent's request to undo their move).
+
+<move> - Make a move in your current game. Use algebraic notation, such as e4, Nf3, O-O-O.
+
+
+See https://www.facebook.com/Chessbot-173074776551825/ for any questions.
 	''')
 
 
