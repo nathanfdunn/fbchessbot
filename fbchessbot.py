@@ -302,8 +302,7 @@ def show(player, opponent, game):
 
 @command(allow_anonymous=True)
 def help(sender):
-	send_message(sender, '''Command - description
-help - Display this help text
+	send_message(sender, '''help - Display this help text
 my name is <username> - Choose the name other users can call you by
 play against <playername> - Start playing with another user
 new game <color> - Start a new game with the user you are currently playing against
