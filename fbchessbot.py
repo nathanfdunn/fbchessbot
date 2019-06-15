@@ -198,6 +198,11 @@ commands = []
 anonymous_commands = []
 def handle_message(sender, message):
 	message = message.strip()
+
+	# Minor hack to intercept almost helps
+	if message.lower() != 'help' and 'help' in message.lower():
+		message = 'almosthelp'
+
 	# print('sender', sender, 'message', message)
 	if db.user_is_registered(sender):
 		if not any(func(sender, message) for func in commands):
@@ -300,9 +305,7 @@ def show(player, opponent, game):
 	else:
 		send_message(player.id, 'Black to move')
 
-@command(allow_anonymous=True)
-def help(sender):
-	send_message(sender, '''help - Display this help text.
+helptext = '''help - Display this help text.
 
 my name is <username> - Choose the name other users can call you by.
 
@@ -319,8 +322,17 @@ undo - Request to undo your last move (or accept your opponent's request to undo
 <move> - Make a move in your current game. Use algebraic notation, such as e4, Nf3, O-O-O.
 
 
-See https://www.facebook.com/Chessbot-173074776551825/ for any questions.
-	''')
+See https://www.facebook.com/Chessbot-173074776551825/ for any questions.'''
+
+@command(allow_anonymous=True)
+def help(sender):
+	send_message(sender, helptext)
+
+almosthelptext = 'It looks like you are asking for help. Try typing just "help" (without the quotes)'
+
+@command(allow_anonymous=True)
+def almosthelp(sender):
+	send_message(sender, almosthelptext)
 
 
 @command(require_game=True)

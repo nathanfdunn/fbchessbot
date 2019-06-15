@@ -15,6 +15,9 @@ import dbactions
 from dbtools import refresh_funcs
 import fbchessbot
 
+helptext = fbchessbot.helptext
+almosthelptext = fbchessbot.almosthelptext
+
 # Want to refresh early and often
 refresh_funcs()
 
@@ -773,10 +776,15 @@ class TestMiscellaneous(GamePlayTest):
 			self.assertLastBoardImageEqualsI('rnbqkbnr-pppppppp-8-8-8-8-PPPPPPPP-RNBQKBNR', 'b', jessid)
 			self.assertLastMessageEquals(jessid, 'White to move')
 
-	@unittest.expectedFailure
 	def test_help(self):
-		self.handle_message(nateid, 'help')
-		self.assertLastMessageEquals(nateid, 'Help text coming soon...')
+		with self.subTest('help basic'):
+			self.handle_message(nateid, 'help', expected_replies=1)
+			self.assertLastMessageEquals(nateid, helptext)
+
+		with self.subTest('help formatted'):
+			self.handle_message(nateid, 'YOU HAVE to HeLP Me!!!')
+			self.assertLastMessageEquals(nateid, almosthelptext)
+
 
 	# Maybe should also test with unregistered user
 	def test_empty(self):
