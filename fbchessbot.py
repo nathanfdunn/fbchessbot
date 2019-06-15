@@ -366,7 +366,7 @@ def my_name_is(nickname, sender):
 
 	user_is_new = db.set_nickname(sender, nickname)
 	if user_is_new:
-		send_message(sender, f'Nice to meet you {nickname}!')
+		send_message(sender, f'Nice to meet you {nickname}! Say "help" any time for more commands')
 	else:
 		send_message(sender, f'I set your nickname to {nickname}')
 
