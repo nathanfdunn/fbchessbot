@@ -12,45 +12,39 @@ $$ LANGUAGE plpgsql;
 
 
 
-CREATE OR REPLACE FUNCTION cb.block_player(
-	_playerid BIGINT,
-	_targetid BIGINT,
-	_block BOOLEAN
+CREATE OR REPLACE FUNCTION cb.set_relation(
+	_iniating_playerid BIGINT,
+	_receiving_playerid BIGINT,
+	_relationship_state cb.player_relationship_state
 )
 RETURNS INT
 AS
 $$
 BEGIN
-	IF _block THEN
-		IF EXISTS(
-			SELECT * 
-			FROM player_blockage
-			WHERE playerid = _playerid AND blocked_playerid = _targetid
-			)
-		THEN
-			RETURN 1;	-- Redundant
-		END IF;
+    IF EXISTS(
+        SELECT *
+        FROM cb.player_relationship pr
+        WHERE initiating_playerid = _iniating_playerid
+                AND receiving_playerid = _receiving_playerid
+                AND relationship_state = _relationship_state
+    )
+    THEN
+        RETURN 1;	-- Redundant
+    END IF;
 
-		-- Remove opponent context if necessary
-		UPDATE player SET opponent_context = NULL
-		WHERE id = _targetid AND opponent_context = _playerid;
+	IF _relationship_state = 'BLOCKED' THEN
+        -- Remove opponent context if necessary
+        UPDATE player SET opponent_context = NULL
+        WHERE id = _receiving_playerid AND opponent_context = _iniating_playerid;
+    END IF;
 
-		INSERT INTO player_blockage (playerid, blocked_playerid)
-		VALUES (_playerid, _targetid);
-		RETURN 0;		-- Success
-	ELSE
-		IF NOT EXISTS(
-			SELECT * 
-			FROM player_blockage
-			WHERE playerid = _playerid AND blocked_playerid = _targetid
-			)
-		THEN
-			RETURN 1;	-- Redundant
-		END IF;
+    INSERT INTO cb.player_relationship (initiating_playerid, receiving_playerid, relationship_state)
+    VALUES (_iniating_playerid, _receiving_playerid, _relationship_state)
+    ON CONFLICT ON CONSTRAINT UX_initiating_receiving
+    DO UPDATE SET relationship_state = _relationship_state;
 
-		DELETE FROM player_blockage WHERE playerid = _playerid AND blocked_playerid = _targetid;
-		RETURN 0;		-- Success
-	END IF;
+    RETURN 0;		-- Success
+
 END
 $$ LANGUAGE plpgsql;
 
@@ -67,17 +61,17 @@ BEGIN
 	RETURN 
 		(SELECT CASE WHEN EXISTS(
 			SELECT * 
-			FROM player_blockage 
-			WHERE playerid = _playerid AND blocked_playerid = _otherid
+			FROM cb.player_relationship
+			WHERE initiating_playerid = _playerid AND receiving_playerid = _otherid
 			)
 			THEN 1
 			ELSE 0
 		END)
 		|
 		(SELECT CASE WHEN EXISTS(
-			SELECT * 
-			FROM player_blockage 
-			WHERE playerid = _otherid AND blocked_playerid = _playerid
+		    SELECT *
+			FROM cb.player_relationship
+			WHERE initiating_playerid = _otherid AND receiving_playerid = _playerid
 			)
 			THEN 2
 			ELSE 0

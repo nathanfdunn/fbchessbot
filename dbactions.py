@@ -214,7 +214,7 @@ class DB:
 	def delete_all(self):
 		with self.cursor() as cur:
 			cur.execute('''
-				DELETE FROM player_blockage
+				DELETE FROM cb.player_relationship
 				''')
 			cur.execute('''
 				DELETE FROM games
@@ -421,7 +421,7 @@ class DB:
 	def block_player(self, playerid, targetid):
 		with self.cursor() as cur:
 			cur.execute('''
-				SELECT cb.block_player(%s, %s, TRUE)
+				SELECT cb.set_relation(%s, %s, 'BLOCKED'::cb.player_relationship_state)
 				''', [playerid, targetid])
 			# cur.connection.commit()
 			return cur.fetchone()[0]
@@ -429,7 +429,7 @@ class DB:
 	def unblock_player(self, playerid, targetid):
 		with self.cursor() as cur:
 			cur.execute('''
-				SELECT cb.block_player(%s, %s, FALSE)
+				SELECT cb.set_relation(%s, %s, 'STRANGERS'::cb.player_relationship_state)
 				''', [playerid, targetid])
 			# cur.connection.commit()
 			return cur.fetchone()[0]

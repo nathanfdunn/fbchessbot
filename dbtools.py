@@ -10,6 +10,8 @@ except ModuleNotFoundError:
 	pass
 from dbactions import DB
 
+from constants import Relationship
+
 DATABASE_URL = os.environ['DATABASE_URL']
 
 conn = None
@@ -382,3 +384,30 @@ def migration16():
 		ALTER TABLE games ADD COLUMN white_to_play BOOLEAN NOT NULL DEFAULT(TRUE)
 		''')
 	cur.connection.commit()
+
+@register_migration
+def migration17():
+	op()
+
+	relationship_payload = ','.join(f"'{member.name}'" for member in Relationship)
+	cur.execute(f'''
+		CREATE TYPE cb.player_relationship_state AS ENUM ({relationship_payload})
+	''')
+	cur.execute('''
+		CREATE TABLE IF NOT EXISTS cb.player_relationship (
+			id SERIAL PRIMARY KEY,
+			initiating_playerid BIGINT REFERENCES player(id),
+			receiving_playerid BIGINT REFERENCES player(id),
+			relationship_state cb.player_relationship_state,
+			CONSTRAINT UX_initiating_receiving UNIQUE (initiating_playerid, receiving_playerid) 
+		)
+	''')
+	cur.connection.commit()
+
+@register_migration
+def migration18():
+	op()
+
+	cur.execute(f'''
+		DROP TABLE IF EXISTS cb.player_blockage;
+	''')

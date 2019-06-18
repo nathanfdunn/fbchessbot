@@ -27,6 +27,12 @@ WHITE_WINS = Outcome.WHITE_WINS
 BLACK_WINS = Outcome.BLACK_WINS
 DRAW = Outcome.DRAW
 
+class Relationship(enum.IntEnum):
+	FRIEND_REQUEST = 1
+	FRIENDS = 2
+	BLOCKED = 3
+	STRANGERS = 4
+
 EVERYONE = 'everyone'
 STRANGERS = 'strangers'
 
