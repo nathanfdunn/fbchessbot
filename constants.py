@@ -55,3 +55,5 @@ intro = "Hi! Why don't you introduce yourself? (say My name is <name>)"
 
 no_opponent = "You are not playing against anyone. Say 'play against <player>' to start playing against someone. (Try 'play against Nate' if you don't know anyone else on Chessbot)"
 no_game = "You have no active games with {0}. Say 'new game white' or 'new game black' to start a new game"
+
+registered = 'Nice to meet you {0}! You are ready to start playing! Say "play against <player>" to start playing with someone. Say "help" at any time to see more commands'

@@ -221,15 +221,15 @@ class TestRegistration(BaseTest):
 	def test_can_register(self):
 		with self.subTest(player='Nate'):
 			self.handle_message(nateid, 'My name is Nate')
-			self.assertLastMessageEquals(nateid, 'Nice to meet you Nate! You are ready to start playing! Say "help" at any time to see more commands')
+			self.assertLastMessageEquals(nateid, constants.registered.format('Nate'))
 
 		with self.subTest(player='Chad'):
 			self.handle_message(chadid, '   \n  MY   \n NamE is   \n CHaD  \n  ')
-			self.assertLastMessageEquals(chadid, 'Nice to meet you CHaD! You are ready to start playing! Say "help" at any time to see more commands')
+			self.assertLastMessageEquals(chadid, constants.registered.format('CHaD'))
 
 		with self.subTest(player='Jess'):
 			self.handle_message(jessid, 'my name is jess')
-			self.assertLastMessageEquals(jessid, 'Nice to meet you jess! You are ready to start playing! Say "help" at any time to see more commands')
+			self.assertLastMessageEquals(jessid, constants.registered.format('jess'))
 
 		with self.subTest(total_players=3):
 			with self.db.cursor() as cur:
