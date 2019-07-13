@@ -360,9 +360,9 @@ def undo(player, opponent, game):
 
 @command(allow_anonymous=True, receive_args=True)
 def my_name_is(nickname, sender):
-	if not re.fullmatch(r'[a-z][a-z0-9]*', nickname, flags=re.IGNORECASE):
+	if not re.fullmatch(r'[a-z0-9]*', nickname, flags=re.IGNORECASE):
 		# TODO better error message
-		send_message(sender, r'Nickname must match regex [a-z]+[0-9]*')
+		send_message(sender, r'Nickname must be only letters and numbers and not have spaces')
 		return
 	if len(nickname) > 32:
 		send_message(sender, 'That nickname is too long (Try 32 or less characters)')
@@ -622,8 +622,11 @@ def normalize_move(game, move):
 
 def handle_move(sender, message):
 	player, opponent, game = db.get_context(sender)
-	if not game:
-		send_message(sender, 'You have no active games')
+	if not opponent:
+		send_message(sender, constants.no_opponent)
+		return
+	elif not game:
+		send_message(sender, constants.no_game.format(opponent.nickname))
 		return
 
 	if not game.is_active_player(player.id):

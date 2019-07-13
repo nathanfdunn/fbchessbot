@@ -52,3 +52,6 @@ activation_message = (
 	)
 
 intro = "Hi! Why don't you introduce yourself? (say My name is <name>)"
+
+no_opponent = "You are not playing against anyone. Say 'play against <player>' to start playing against someone. (Try 'play against Nate' if you don't know anyone else on Chessbot)"
+no_game = "You have no active games with {0}. Say 'new game white' or 'new game black' to start a new game"

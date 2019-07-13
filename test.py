@@ -216,6 +216,7 @@ class TestUnregisteredResponses(BaseTest):
 		self.handle_message(newb, 'Hi', expected_replies=1)
 		self.assertLastMessageEquals(newb, constants.intro)
 
+
 class TestRegistration(BaseTest):
 	def test_can_register(self):
 		with self.subTest(player='Nate'):
@@ -293,7 +294,7 @@ class TestRegistration(BaseTest):
 	def test_name_must_conform(self):
 		with self.subTest(nickname='special chars'):
 			self.handle_message(nateid, 'my name is @*#n923')
-			self.assertLastMessageEquals(nateid, 'Nickname must match regex [a-z]+[0-9]*')
+			self.assertLastMessageEquals(nateid, 'Nickname must be only letters and numbers and not have spaces')
 
 		with self.subTest(nickname='too long'):
 			self.handle_message(nateid, 'my name is jerryfrandeskiemandersonfrancansolophenofocus')
@@ -304,7 +305,7 @@ class TestRegistration(BaseTest):
 			# Changing behavior of this edge case to make code cleaner
 			# self.assertLastMessageEquals(nateid, 'That nickname is too long (Try 32 or less characters)')
 			# Changing behavior back for similar reasons
-			self.assertLastMessageEquals(nateid, 'Nickname must match regex [a-z]+[0-9]*')
+			self.assertLastMessageEquals(nateid, 'Nickname must be only letters and numbers and not have spaces')
 
 # Also need to check if there are already games active
 class TestOpponentContext(BaseTest):
@@ -346,6 +347,16 @@ class TestOpponentContext(BaseTest):
 	def test_context_case_insensitive(self):
 		self.handle_message(nateid, 'Play against cHAd', expected_replies=2)
 		self.assertLastMessageEquals(nateid, 'You are now playing against Chad')
+
+	def test_no_opponent(self):
+		self.handle_message(nateid, 'e4', expected_replies=1)
+		self.assertLastMessageEquals(nateid, constants.no_opponent)
+
+	def test_no_game(self):
+		self.handle_message(nateid, 'Play against Chad', expected_replies=2)
+		self.handle_message(nateid, 'e4', expected_replies=1)
+		self.assertLastMessageEquals(nateid, constants.no_game.format('Chad'))
+
 
 class TestGameInitiation(BaseTest):
 	# expected_replies = 1
