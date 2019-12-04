@@ -168,6 +168,10 @@ def verify():
 	finally:
 		print('failure:', failed)
 
+# Keep track of the last handful of Facebook message ID's
+# so we can dedupe
+messageIds = []
+
 def messaging_events(payload):
 	"""Generate tuples of (sender_id, message_text) from the
 	provided payload.
@@ -176,6 +180,15 @@ def messaging_events(payload):
 	print('message(s) received:\n', payload)
 	events = data["entry"][0]["messaging"]
 	for event in events:
+		messageId = event.get("message", {}).get("mid")
+		if messageId:
+			if messageId in messageIds:
+				# Duplicate message, don't process
+				continue
+			messageIds.insert(0, messageId)
+			if len(messageIds) > 10:
+				messageIds.pop()
+
 		if "message" in event and "text" in event["message"]:
 			yield event["sender"]["id"], event["message"]["text"]
 		else:
