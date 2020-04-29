@@ -210,6 +210,8 @@ def messages():
 commands = []
 anonymous_commands = []
 def handle_message(sender, message):
+	send_message(sender, 'Chessbot is no longer operational due to a change in the Messenger API. Messenger Instant Games offer alternatives, such as Instant Chess https://www.facebook.com/onlineinstantchess/')
+	return
 	message = message.strip()
 
 	# Minor hack to intercept almost helps
